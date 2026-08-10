@@ -1,0 +1,1782 @@
+{
+  "info": {
+    "_postman_id": "8a75903e-e705-49f1-9df9-d107e68c7553",
+    "name": "Misen Companion API",
+    "description": "Every endpoint in PRD \u00a75, plus the failure paths.\n\nSet `base_url` and `token` in the collection variables. `token` is a member token minted by `scripts/provision.py`; it resolves to both a member and a household, so no request ever names a household.\n\nRequests that capture an id into a variable are marked \u2014 run the folders in order the first time.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.misen.example.com"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "week_start",
+      "value": "2026-08-10",
+      "description": "must be the household's week_starts_on day"
+    },
+    {
+      "key": "recipe_slug",
+      "value": "roast-chicken"
+    },
+    {
+      "key": "pantry_item_id",
+      "value": ""
+    },
+    {
+      "key": "shopping_item_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Household",
+      "description": "Identity and membership.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "No auth. Caddy and the compose healthcheck both call this.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "description": "Validates the token at app launch."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Household",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/household",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "household"
+              ]
+            },
+            "description": "Members, timezone, week_starts_on."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pantry",
+      "description": "Presence, free-text quantity, soft 'used' state.",
+      "item": [
+        {
+          "name": "Add item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pantry",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"flour\",\n  \"quantity\": \"1 bag\",\n  \"location\": \"pantry\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"pantry_item_id\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pantry",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List \u2014 fridge only",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pantry?location=fridge",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry"
+              ],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "fridge"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List \u2014 including used",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pantry?include_used=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry"
+              ],
+              "query": [
+                {
+                  "key": "include_used",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update quantity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pantry/{{pantry_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry",
+                "{{pantry_item_id}}"
+              ]
+            },
+            "description": "Absent fields are left alone; explicit null clears.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": \"half a bag\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark used",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pantry/{{pantry_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry",
+                "{{pantry_item_id}}"
+              ]
+            },
+            "description": "Sets used_at. NOT a delete \u2014 the row stays queryable.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"used\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Un-use",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pantry/{{pantry_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry",
+                "{{pantry_item_id}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"used\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/pantry/{{pantry_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry",
+                "{{pantry_item_id}}"
+              ]
+            },
+            "description": "The undo path for a mis-added item. 'We finished it' is PATCH used:true."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Menu",
+      "description": "Two weeks. An empty night is the absence of a row.",
+      "item": [
+        {
+          "name": "Get \u2014 this week and next",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/menu",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu"
+              ]
+            },
+            "description": "Default weeks=2, matching the Menu tab."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get \u2014 one week",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/menu?weeks=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "weeks",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get \u2014 a specific week",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/menu?week_start={{week_start}}&weeks=2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "week_start",
+                  "value": "{{week_start}}"
+                },
+                {
+                  "key": "weeks",
+                  "value": "2"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Plan a recipe",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/menu/{{week_start}}/monday",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu",
+                "{{week_start}}",
+                "monday"
+              ]
+            },
+            "description": "Title is cached from Mealie. Send `title` too to skip the round trip.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipe_id\": \"{{recipe_slug}}\",\n  \"servings\": 6\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Plan a freeform meal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/menu/{{week_start}}/tuesday",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu",
+                "{{week_start}}",
+                "tuesday"
+              ]
+            },
+            "description": "Not every night needs a recipe.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nachos\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Plan with a cook",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/menu/{{week_start}}/wednesday",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu",
+                "{{week_start}}",
+                "wednesday"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Leftovers\",\n  \"cooked_by\": 1,\n  \"notes\": \"use up the roast\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Clear a night",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/menu/{{week_start}}/tuesday",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu",
+                "{{week_start}}",
+                "tuesday"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Recipes",
+      "description": "Scaling \u2014 the one recipe operation Companion owns.",
+      "item": [
+        {
+          "name": "Scaled to 8",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/recipes/{{recipe_slug}}/scaled?servings=8",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "recipes",
+                "{{recipe_slug}}",
+                "scaled"
+              ],
+              "query": [
+                {
+                  "key": "servings",
+                  "value": "8"
+                }
+              ]
+            },
+            "description": "Per-line status: scaled / unscaled_no_quantity / scaled_awkward."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Scaled to 3",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/recipes/{{recipe_slug}}/scaled?servings=3",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "recipes",
+                "{{recipe_slug}}",
+                "scaled"
+              ],
+              "query": [
+                {
+                  "key": "servings",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": "Expect scaled_awkward on countable units."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unscaled",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/recipes/{{recipe_slug}}/scaled",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "recipes",
+                "{{recipe_slug}}",
+                "scaled"
+              ]
+            },
+            "description": "factor 1.0, same response shape."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shopping",
+      "description": "A proxy over Mealie's list, plus the menu diff.",
+      "item": [
+        {
+          "name": "Get list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shopping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping"
+              ]
+            },
+            "description": "Grouped by aisle, 'Other' last."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shopping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"name\": \"Milk\",\n      \"quantity\": \"1 gal\"\n    },\n    {\n      \"name\": \"Eggs\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"shopping_item_id\", pm.response.json().groups[0].items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get \u2014 unchecked only",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shopping?unchecked_only=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping"
+              ],
+              "query": [
+                {
+                  "key": "unchecked_only",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "counts still reflect the whole list, for the progress bar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check off",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shopping/{{shopping_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping",
+                "{{shopping_item_id}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checked\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Un-check",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shopping/{{shopping_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping",
+                "{{shopping_item_id}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checked\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Build from this week's menu",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shopping/from-menu",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping",
+                "from-menu"
+              ]
+            },
+            "description": "Safe to re-run: anything already listed comes back in already_listed, not added twice.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Build from a chosen week",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shopping/from-menu",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping",
+                "from-menu"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"week_start\": \"{{week_start}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove item",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/shopping/{{shopping_item_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping",
+                "{{shopping_item_id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reminders",
+      "description": "Preference only \u2014 the notification fires on the device.",
+      "item": [
+        {
+          "name": "Get",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reminders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reminders"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Friday 5pm",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reminders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reminders"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"day\": \"friday\",\n  \"hour\": 17\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Saturday, default hour",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reminders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reminders"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"day\": \"saturday\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Turn off",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reminders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reminders"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"day\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Failure paths",
+      "description": "Every error uses one envelope: {\"error\": {\"code\", \"message\"}}. `message` is written to be shown to a person.",
+      "item": [
+        {
+          "name": "No token \u2192 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown path \u2192 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/nope",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "nope"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bad location \u2192 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pantry",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"x\",\n  \"location\": \"garage\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing name \u2192 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pantry",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": \"fridge\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown pantry item \u2192 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/pantry/999999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "pantry",
+                "999999"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"used\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Empty menu entry \u2192 400",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/menu/{{week_start}}/monday",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu",
+                "{{week_start}}",
+                "monday"
+              ]
+            },
+            "description": "A night needs a recipe or a name.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown recipe \u2192 404",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/menu/{{week_start}}/monday",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu",
+                "{{week_start}}",
+                "monday"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipe_id\": \"no-such-recipe\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cook from another household \u2192 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/menu/{{week_start}}/monday",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu",
+                "{{week_start}}",
+                "monday"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"x\",\n  \"cooked_by\": 999999\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mid-week date \u2192 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/menu?week_start=2026-08-12",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "week_start",
+                  "value": "2026-08-12"
+                }
+              ]
+            },
+            "description": "week_start must be the household's week_starts_on day."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "weeks=0 \u2192 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/menu?weeks=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "weeks",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown recipe \u2192 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/recipes/no-such-recipe/scaled",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "recipes",
+                "no-such-recipe",
+                "scaled"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "servings=0 \u2192 422",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/recipes/{{recipe_slug}}/scaled?servings=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "recipes",
+                "{{recipe_slug}}",
+                "scaled"
+              ],
+              "query": [
+                {
+                  "key": "servings",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Empty items \u2192 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shopping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": []\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown shopping item \u2192 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/shopping/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "shopping",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checked\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hour with no day \u2192 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reminders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reminders"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hour\": 17\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bad day \u2192 422",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reminders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reminders"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"day\": \"funday\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -126,7 +126,40 @@ curl https://api.misen.<domain>/health
 
 ---
 
-## 6. Backups
+## 6. Create the household and its tokens
+
+The Companion database is migrated automatically on every container start, so
+by now the schema exists but nobody can log in. Mint the members:
+
+```sh
+docker compose exec companion python scripts/provision.py \
+    --household "Davies" \
+    --timezone America/New_York \
+    --week-starts-on monday \
+    --member "Nick:N:terracotta" \
+    --member "Mara:M:green"
+```
+
+Each `--member` is `name:initials:color[:role]`. Colors: `terracotta`, `green`,
+`gold`, `plum`. Add a child with `--member "Ivy:I:gold:child"` — children are
+created with Basil switched off.
+
+**The tokens print once and are never stored** — only their sha256 goes in the
+database. Copy them somewhere safe before closing the terminal. If one is lost,
+`--rotate <member_id>` issues a new one and invalidates the old.
+
+Check one works:
+
+```sh
+curl -H "Authorization: Bearer <token>" https://api.misen.<domain>/me
+```
+
+For exploring the rest, import [`docs/misen.postman_collection.json`](../docs/misen.postman_collection.json)
+and set `base_url` and `token`.
+
+---
+
+## 7. Backups
 
 ```sh
 ./backup.sh          # run once by hand and read the output
@@ -143,7 +176,7 @@ disk failure takes both.
 
 ---
 
-## 7. Rehearse a restore
+## 8. Rehearse a restore
 
 This is an acceptance criterion, not an optional extra. An untested backup is a
 hope.
@@ -175,6 +208,7 @@ Phase 0 is complete when all of these hold:
 - [ ] `./backup.sh` produces an archive and the cron entry exists
 - [ ] An off-box copy is configured in `backup.sh`
 - [ ] `./restore.sh --into …` completes and a scratch Mealie starts against it
+- [ ] `curl -H "Authorization: Bearer <token>" .../me` returns the member you minted
 
 ---
 
@@ -201,6 +235,9 @@ and read Mealie's release notes.
 | Caddy loops on certificate errors | DNS not resolving to this host yet, or 80/443 blocked. On Oracle, check the VCN security list *and* the instance's iptables. |
 | Mealie exits immediately | `DATA_DIR/mealie` not owned by `MEALIE_PUID:MEALIE_PGID`. |
 | Companion `unhealthy`, logs show `unable to open database file` | `DATA_DIR/companion` missing or not writable by uid 10001. |
+| Companion exits at boot with an Alembic traceback | A migration failed. It runs before uvicorn on purpose — the app never serves against a schema it doesn't match. Read the traceback, fix, `docker compose up -d --build companion`. |
+| Every request returns 401 | No members provisioned yet (step 6), or the token was pasted with a trailing newline. |
 | `required variable … is missing a value` | A key in `.env.example` is blank in `.env`. |
+| Recipes and shopping 502 while the pantry and menu work | `MEALIE_API_TOKEN` is blank or wrong in `.env` (step 5). Companion stays healthy on purpose — only the Mealie-backed half is down. |
 | Basil replies arrive all at once instead of streaming | `flush_interval -1` missing from the api block in the Caddyfile. |
 | Ran out of disk | Old archives. Lower `BACKUP_RETAIN_DAYS`, confirm off-box copies are working. |

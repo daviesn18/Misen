@@ -20,15 +20,15 @@ Two backends behind one reverse proxy — [Mealie](https://mealie.io) for recipe
 | `mcp/` | FastMCP server — the tools Basil calls |
 | `ios/` | SwiftUI app, one target, iPhone + iPad |
 | `deploy/` | Compose file, Caddyfile, `.env.example`, backup script |
-| `scripts/` | One-off jobs — Recipe Keeper migration, household provisioning |
-| `docs/` | The PRD and the source documents it was built from |
+| `companion/scripts/` | One-off jobs against the Companion database — household provisioning |
+| `docs/` | The PRD, the Postman collection, and the source documents it was built from |
 
 ## Status
 
 | Phase | |
 |---|---|
 | 0 — Infrastructure | code complete, awaiting a host — see [`deploy/README.md`](deploy/README.md) |
-| 1 — Companion API | not started |
+| 1 — Companion API | done — 18 endpoints, 128 tests, [Postman collection](docs/misen.postman_collection.json) |
 | 2 — Recipe migration | not started |
 | 3 — MCP server | not started |
 | 4 — iPhone app | not started |

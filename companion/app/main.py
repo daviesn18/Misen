@@ -1,12 +1,15 @@
 """Misen Companion API.
 
-Phase 0 ships liveness only. Pantry, menu, scaling, shopping, reminders and
-the Basil chat proxy arrive in phases 1 and 5 (PRD §5).
+Pantry, weekly menu, recipe scaling, shopping, and reminders (PRD §5). The
+Basil chat proxy arrives in phase 5 and is the only endpoint table row still
+missing.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from importlib.metadata import PackageNotFoundError, version
 
 from fastapi import FastAPI
@@ -15,6 +18,9 @@ from sqlalchemy import text
 
 from app.config import get_settings
 from app.db import engine
+from app.errors import install_error_handlers
+from app.mealie import close_mealie
+from app.routers import menu, meta, pantry, recipes, reminders, shopping
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +31,30 @@ except PackageNotFoundError:  # running from a source checkout
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    yield
+    # One pooled httpx client serves every Mealie call; close it on the way out
+    # so a reload doesn't leak sockets.
+    close_mealie()
+
+
 app = FastAPI(
     title="Misen Companion",
     version=__version__,
     description="Pantry, weekly menu, recipe scaling, shopping, and Basil.",
+    lifespan=lifespan,
 )
+
+install_error_handlers(app)
+
+app.include_router(meta.router)
+app.include_router(pantry.router)
+app.include_router(menu.router)
+app.include_router(recipes.router)
+app.include_router(shopping.router)
+app.include_router(reminders.router)
 
 
 @app.get("/health", tags=["ops"])
@@ -39,6 +64,10 @@ def health() -> JSONResponse:
     Returns 503 rather than 200-with-a-sad-field when the database is
     unreachable. A healthcheck that always succeeds tells you nothing, and
     Caddy is gated on this one.
+
+    Mealie is deliberately *not* checked here. The two backends fail
+    independently, and marking Companion unhealthy because Mealie is
+    restarting would take the pantry and the menu down with the recipes.
     """
     checks: dict[str, str] = {}
     healthy = True

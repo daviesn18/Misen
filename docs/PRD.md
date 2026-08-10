@@ -146,6 +146,7 @@ CREATE TABLE households (
     timezone         TEXT NOT NULL DEFAULT 'America/New_York',  -- week boundaries + reminders
     week_starts_on   TEXT NOT NULL DEFAULT 'monday',
     mealie_group_id  TEXT,                    -- see §3; NULL = the default group
+    mealie_shopping_list_id TEXT,             -- resolved on first use, then cached
     created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -243,6 +244,10 @@ CREATE TABLE chat_usage (
 
 **`chat_usage` exists so the spend is visible.** One insert per turn, and it turns "is Basil expensive?" from a guess into a query.
 
+**`mealie_shopping_list_id` was added during phase 1.** Mealie supports many shopping lists per household; Misen has exactly one and has to find the same one on every call. Matching by name looked simpler until you notice that renaming the list in Mealie's UI would strand it and silently start a second. The id is resolved once, cached here, and re-resolved if it ever points at nothing.
+
+**Timestamps are naive UTC.** SQLite has no timezone type, so a column that accepts an aware datetime silently drops the offset on write. One clock (`utcnow()`), one meaning, and conversion to household-local time happens at the edge from `households.timezone`.
+
 **Reminder preferences live server-side even though scheduling is local.** Two columns, and it means a reinstall doesn't silently lose the reminder and Basil can say "I'll nudge you Friday" and be telling the truth.
 
 **Dropped from rev 1:** `generation_sessions` (its job is done better by `chat_messages`, which contains the actual reasoning) and `sync_log` (last-write-wins with `updated_at` / `updated_by` on the rows is sufficient — see §8).
@@ -308,6 +313,12 @@ Two deliberate limitations, both surfaced in the UI rather than hidden:
 
 - **The pantry diff is dumb** — case-insensitive substring match on name. It will miss "scallions" vs "green onions" and will occasionally suggest buying something you have. That's the right amount of engineering: the list is a starting point a human edits in the store, and Basil can be asked to sanity-check it, which is a better use of a model than a Levenshtein threshold.
 - **Freeform entries contribute nothing.** "Nachos" has no ingredients, so the generated list has a gap. The response returns `freeform_entries: ["Nachos"]` so the app can say "3 nights are freeform — add anything you need for those" and Basil can ask directly.
+
+**Rebuilding is safe.** "Generate the list" is a button someone presses more than once as a week fills in, and Basil's own tool description tells it to call `build_shopping_list` after finishing a plan. Anything already on the list comes back in `already_listed` instead of being added a second time — Mealie merges duplicate *food* items but not the free-text ones Misen writes, so without this the second press silently doubles the list. Explicit `POST /shopping` is not deduplicated: if someone asks for two of a thing, they get two.
+
+**Ingredient lines that are instructions don't become items.** A line with neither a parsed food nor a quantity — "salt to taste", "freshly ground pepper" — is guidance to the cook, and a shopping list cluttered with them is one people stop reading. A line with a food but no quantity ("olive oil") is a real item and stays.
+
+The response also carries `unavailable_recipes`: a recipe deleted in Mealie after being planned is named and skipped rather than failing the whole build.
 
 ### Errors
 
@@ -559,6 +570,7 @@ Each phase has a "done when" someone else could verify.
 
 **Phase 1 — Companion API.** Full schema with Alembic including household scoping, all pantry / menu / shopping / scaling / reminder endpoints, auth with roles, tests.
 *Done when:* a Postman collection exercises every endpoint in §5 including failure paths; `pytest` is green with the shopping diff and the scaling statuses covered; and **the cross-tenant isolation test passes** — a second household's token sees none of the first household's rows on any endpoint.
+**Done.** 128 tests, [`docs/misen.postman_collection.json`](misen.postman_collection.json) covering all 18 endpoints, and `tests/test_isolation.py` — which includes a guard that fails the build when a new tenant-scoped table arrives without an isolation assertion. Chat endpoints are phase 5; their tables ship in the phase 1 migration so the schema migrates once.
 
 **Phase 2 — Recipe migration.** One-off script: Recipe Keeper `.zip` → parse HTML → POST to Mealie.
 *Done when:* recipe count matches the export, and ten spot-checked recipes have intact ingredients, steps, and images.

@@ -19,6 +19,9 @@ RUN pip install .
 
 COPY alembic.ini ./
 COPY alembic ./alembic
+COPY scripts ./scripts
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Non-root. The uid is fixed and high to avoid colliding with a host user, and
 # /data is chowned because it is a bind mount the container must write to.
@@ -34,4 +37,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"
 
+# The entrypoint runs migrations first, then hands off to CMD. Overriding CMD
+# (to run provision.py, say) still gets a migrated database.
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
