@@ -1,2 +1,39 @@
-# Mise
-Meal Planning &amp; Recipe Book
+# Misen
+
+**A warm kitchen, in its place.**
+
+A family meal planning app for iPhone and iPad. Plan the week's dinners, keep a recipe library, track what's on hand, shop the list, and chat with **Basil** — an embedded assistant that can read the pantry, write the menu, and cart the missing groceries.
+
+Not built yet. [`docs/PRD.md`](docs/PRD.md) is the spec.
+
+## What it is
+
+Five sections: **Menu · Recipes · Pantry · Shopping · Basil**.
+
+Two backends behind one reverse proxy — [Mealie](https://mealie.io) for recipes and shopping list storage, and a small FastAPI companion service for the pantry, the weekly menu, and the chat proxy. A FastMCP server sits over both and gives Claude one coherent tool surface, which is how Basil does anything useful.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `companion/` | FastAPI — pantry, menu, shopping proxy, recipe scaling, chat proxy, auth |
+| `mcp/` | FastMCP server — the tools Basil calls |
+| `ios/` | SwiftUI app, one target, iPhone + iPad |
+| `deploy/` | Compose file, Caddyfile, `.env.example`, backup script |
+| `scripts/` | One-off jobs — Recipe Keeper migration, household provisioning |
+| `docs/` | The PRD and the source documents it was built from |
+
+## Status
+
+| Phase | |
+|---|---|
+| 0 — Infrastructure | not started |
+| 1 — Companion API | not started |
+| 2 — Recipe migration | not started |
+| 3 — MCP server | not started |
+| 4 — iPhone app | not started |
+| 5 — Basil | not started |
+| 6 — iPad + Cook Mode | not started |
+| 7 — Dry run | not started |
+
+Phase detail and acceptance criteria: [`docs/PRD.md` §12](docs/PRD.md).
