@@ -26,7 +26,7 @@ The bet is that the assistant is the reason the other four stay current. Nobody 
 
 One household at launch — two adults, both trusted equally, sharing menu, pantry, and shopping list, with separate Basil conversation histories. But the data model is multi-household and multi-member from the first migration (decision 9), so adding kids is a row insert and adding a second household is a configuration change rather than a rewrite.
 
-Members carry a `role` of `adult` or `child`. Children get the app, can see everything, can check off shopping items and mark pantry items used — the chores — but can't delete recipes, can't clear a planned night, and don't get a Basil thread by default. That last one is a cost control as much as a policy: a chat endpoint that spends real money per message shouldn't be handed out casually.
+Members carry a `role` of `adult` or `child`. Children get the app, can see everything, can check off shopping items and mark pantry items used — the chores — but can't delete recipes, can't clear a planned night, and **have no Basil access at all**. That last one is a cost control as much as a policy: a chat endpoint that spends real money per message shouldn't be handed out casually. `can_use_basil` is a plain boolean, defaulting true for adults and false for children; there is no per-child allowance and no partial access.
 
 ### Platforms
 
@@ -600,7 +600,7 @@ Each phase has a "done when" someone else could verify.
 
 **Open — worth deciding before phase 4:** what should the Menu tab's **Swap** actually do? The prototype cycles a hardcoded pool. Real options: (a) open the recipe picker, (b) ask Basil for one alternative inline, (c) cycle recipes tagged for that slot. (a) is most predictable and least interesting; (b) is most in keeping with the product now that freeform meals exist and Basil can offer "or just do leftovers". Not blocking until the Menu tab is built.
 
-**Open — worth deciding before phase 1:** should children get their own Basil thread with a lower daily cap, rather than no access? `can_use_basil` is a boolean today; making it a per-member integer cap instead is a one-column change now and a migration later. Leaning toward doing it now, but it depends on whether kids are a near-term plan or a someday.
+**Settled:** children get no Basil access. `can_use_basil` stays a boolean rather than becoming a per-member spend allowance. If that changes, swapping the column for an integer cap is a small migration on a table with a handful of rows.
 
 ---
 
