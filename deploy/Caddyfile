@@ -1,0 +1,65 @@
+# Misen — reverse proxy and TLS.
+#
+# Caddy obtains and renews Let's Encrypt certificates automatically. The only
+# prerequisite is that each domain's A/AAAA record already points at this host
+# before the container starts, and that ports 80 and 443 are reachable.
+#
+# {$VAR} is Caddy's environment substitution, populated from compose.
+
+{
+	email {$ACME_EMAIL}
+
+	# Uncomment to use the Let's Encrypt staging endpoint while testing DNS.
+	# Staging certs are untrusted by browsers but are not rate limited, which
+	# matters because the production limit is 5 failures per hostname per hour
+	# and a wrong DNS record burns through it fast.
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+# Applied to every site below.
+(common) {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# ---------------------------------------------------------------------------
+# Mealie — recipes, imports, images. Browser-facing admin UI plus the API the
+# iOS app reads directly.
+# ---------------------------------------------------------------------------
+{$MEALIE_DOMAIN} {
+	import common
+	reverse_proxy mealie:9000
+}
+
+# ---------------------------------------------------------------------------
+# Companion API — pantry, menu, scaling, shopping, Basil.
+# ---------------------------------------------------------------------------
+{$API_DOMAIN} {
+	import common
+
+	reverse_proxy companion:8000 {
+		# POST /generate/chat streams Server-Sent Events. Response buffering
+		# would hold the whole reply until the turn finished, which defeats
+		# streaming entirely and looks to the user like a hang. -1 flushes
+		# immediately. Harmless for the ordinary JSON endpoints.
+		flush_interval -1
+	}
+}
+
+# ---------------------------------------------------------------------------
+# MCP server — phase 3. Uncomment together with the mcp service in
+# docker-compose.yml. Left commented so Caddy does not try to obtain a
+# certificate for a hostname with nothing behind it.
+# ---------------------------------------------------------------------------
+# {$MCP_DOMAIN} {
+# 	import common
+# 	reverse_proxy mcp:8001 {
+# 		flush_interval -1
+# 	}
+# }

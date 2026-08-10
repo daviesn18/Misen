@@ -1,0 +1,30 @@
+# Secrets — never commit. deploy/.env.example is the template.
+.env
+.env.*
+!.env.example
+
+# Runtime data and backups (bind mounts under DATA_DIR)
+deploy/data/
+deploy/backups/
+deploy/restore-rehearsal-*/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Databases
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# macOS / Xcode (phase 4)
+.DS_Store
+xcuserdata/
+*.xcuserstate
+DerivedData/

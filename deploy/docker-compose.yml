@@ -1,0 +1,132 @@
+# Misen — single-host deployment.
+#
+# Four services, one network, one public entrypoint. Only Caddy publishes
+# ports; everything else is reachable only from inside the compose network.
+#
+# Every image is pinned to an explicit tag. Never use `:latest` here — an
+# unattended `docker compose pull` across a Mealie major version will run a
+# database migration you did not choose the timing of.
+
+name: misen
+
+services:
+  # ---------------------------------------------------------------------
+  # Caddy — the only thing exposed to the internet. Terminates TLS with
+  # certificates it obtains and renews from Let's Encrypt automatically.
+  # ---------------------------------------------------------------------
+  caddy:
+    image: caddy:2.11.4
+    container_name: misen-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${DATA_DIR:-./data}/caddy/data:/data
+      - ${DATA_DIR:-./data}/caddy/config:/config
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+      MEALIE_DOMAIN: ${MEALIE_DOMAIN:?set MEALIE_DOMAIN in .env}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env}
+      MCP_DOMAIN: ${MCP_DOMAIN:-mcp.invalid}
+    depends_on:
+      companion:
+        condition: service_healthy
+      mealie:
+        condition: service_started
+    networks: [misen]
+
+  # ---------------------------------------------------------------------
+  # Mealie — recipes, imports, image hosting, shopping list storage.
+  # No published ports: reached only through Caddy.
+  # ---------------------------------------------------------------------
+  mealie:
+    image: ghcr.io/mealie-recipes/mealie:v3.22.0
+    container_name: misen-mealie
+    restart: unless-stopped
+    volumes:
+      - ${DATA_DIR:-./data}/mealie:/app/data
+    environment:
+      # Mealie runs as PUID:PGID and writes to the bind mount above, so the
+      # host directory must be owned by that uid/gid. See deploy/README.md.
+      PUID: ${MEALIE_PUID:-1000}
+      PGID: ${MEALIE_PGID:-1000}
+      TZ: ${TZ:-America/New_York}
+      BASE_URL: https://${MEALIE_DOMAIN}
+      # Invite-only. Misen provisions members itself; nobody should be able
+      # to create an account by finding the URL.
+      ALLOW_SIGNUP: "false"
+      DEFAULT_EMAIL: ${MEALIE_DEFAULT_EMAIL:?set MEALIE_DEFAULT_EMAIL in .env}
+      DEFAULT_GROUP: ${MEALIE_DEFAULT_GROUP:-misen}
+      DEFAULT_HOUSEHOLD: ${MEALIE_DEFAULT_HOUSEHOLD:-home}
+    deploy:
+      resources:
+        limits:
+          # Mealie will happily grow into available RAM when idle. Capping it
+          # matters on a small box where three other services need room.
+          memory: 1000M
+    networks: [misen]
+
+  # ---------------------------------------------------------------------
+  # Companion — pantry, weekly menu, recipe scaling, shopping proxy,
+  # Basil chat proxy, auth. Phase 0 ships /health only.
+  # ---------------------------------------------------------------------
+  companion:
+    build:
+      context: ../companion
+      dockerfile: Dockerfile
+    image: misen-companion:dev
+    container_name: misen-companion
+    restart: unless-stopped
+    volumes:
+      - ${DATA_DIR:-./data}/companion:/data
+    environment:
+      MISEN_DB_PATH: /data/misen.db
+      MISEN_TZ: ${TZ:-America/New_York}
+      MISEN_CHAT_MODEL: ${MISEN_CHAT_MODEL:-claude-opus-5}
+      MISEN_DAILY_MESSAGE_CAP: ${MISEN_DAILY_MESSAGE_CAP:-100}
+      MISEN_MEALIE_URL: http://mealie:9000
+      MISEN_MEALIE_TOKEN: ${MEALIE_API_TOKEN:-}
+      MISEN_MCP_URL: https://${MCP_DOMAIN:-mcp.invalid}
+      MISEN_MCP_TOKEN: ${MCP_TOKEN:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    networks: [misen]
+
+  # ---------------------------------------------------------------------
+  # MCP — the tool surface Basil and (later) claude.ai call.
+  # Uncomment in phase 3, along with the matching site block in Caddyfile.
+  # It is commented out rather than stubbed so that `compose up` works today
+  # instead of crash-looping on a service with no code behind it.
+  # ---------------------------------------------------------------------
+  # mcp:
+  #   build:
+  #     context: ../mcp
+  #     dockerfile: Dockerfile
+  #   image: misen-mcp:dev
+  #   container_name: misen-mcp
+  #   restart: unless-stopped
+  #   environment:
+  #     MISEN_COMPANION_URL: http://companion:8000
+  #     MISEN_MEALIE_URL: http://mealie:9000
+  #     MISEN_MEALIE_TOKEN: ${MEALIE_API_TOKEN:-}
+  #     MCP_TOKEN: ${MCP_TOKEN:-}
+  #   depends_on:
+  #     companion:
+  #       condition: service_healthy
+  #   networks: [misen]
+
+networks:
+  misen:
+    driver: bridge
+
+# Bind mounts under DATA_DIR rather than named volumes, deliberately: backup
+# and restore become ordinary file operations on a path you can see, instead
+# of spelunking in /var/lib/docker/volumes. See backup.sh.

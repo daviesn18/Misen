@@ -27,7 +27,7 @@ Two backends behind one reverse proxy — [Mealie](https://mealie.io) for recipe
 
 | Phase | |
 |---|---|
-| 0 — Infrastructure | not started |
+| 0 — Infrastructure | code complete, awaiting a host — see [`deploy/README.md`](deploy/README.md) |
 | 1 — Companion API | not started |
 | 2 — Recipe migration | not started |
 | 3 — MCP server | not started |
