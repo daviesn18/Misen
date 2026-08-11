@@ -21,6 +21,7 @@ Two backends behind one reverse proxy — [Mealie](https://mealie.io) for recipe
 | `ios/` | SwiftUI app, one target, iPhone + iPad |
 | `deploy/` | Compose file, Caddyfile, `.env.example`, backup script |
 | `companion/scripts/` | One-off jobs against the Companion database — household provisioning |
+| `scripts/` | Recipe importers — cookbook and export files into Mealie |
 | `docs/` | The PRD, the Postman collection, and the source documents it was built from |
 
 ## Status
@@ -29,7 +30,7 @@ Two backends behind one reverse proxy — [Mealie](https://mealie.io) for recipe
 |---|---|
 | 0 — Infrastructure | code complete, awaiting a host — see [`deploy/README.md`](deploy/README.md) |
 | 1 — Companion API | done — 18 endpoints, 130 tests, [Postman collection](docs/misen.postman_collection.json) |
-| 2 — Recipe migration | not started — needs the Recipe Keeper export |
+| 2 — Recipe migration | importer built, 53 tests — 56 recipes ready to load, [review](docs/recipes/stealth-health-slow-cooker-review.md) |
 | 3 — MCP server | done — 13 tools, 50 tests |
 | 4 — iPhone app | not started |
 | 5 — Basil | server done — chat proxy, SSE, 37 tests; the chat UI is part of the app |

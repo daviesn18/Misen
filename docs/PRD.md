@@ -616,8 +616,11 @@ Each phase has a "done when" someone else could verify.
 *Done when:* a Postman collection exercises every endpoint in §5 including failure paths; `pytest` is green with the shopping diff and the scaling statuses covered; and **the cross-tenant isolation test passes** — a second household's token sees none of the first household's rows on any endpoint.
 **Done.** 128 tests, [`docs/misen.postman_collection.json`](misen.postman_collection.json) covering all 18 endpoints, and `tests/test_isolation.py` — which includes a guard that fails the build when a new tenant-scoped table arrives without an isolation assertion. Chat endpoints are phase 5; their tables ship in the phase 1 migration so the schema migrates once.
 
-**Phase 2 — Recipe migration.** One-off script: Recipe Keeper `.zip` → parse HTML → POST to Mealie.
+**Phase 2 — Recipe migration.** One-off script: an export or a cookbook → parse → POST to Mealie.
 *Done when:* recipe count matches the export, and ten spot-checked recipes have intact ingredients, steps, and images.
+**Importer built** (`scripts/`), 53 tests. Rev 1 assumed one input — a Recipe Keeper `.zip` — and the first real input was a cookbook PDF converted to markdown, so the pipeline is now parser-plus-shared-uploader rather than one script. Recipe Keeper is still to write and still waiting on the export.
+**On "images":** a converted PDF has none. The photographs are what the *text* was lost to, not an asset that came along with it. Recipes imported this way have no image and that criterion cannot be met from this input.
+**On "count matches":** it does not, and saying so is the point. Of 89 recipes in that cookbook's contents, 64 parsed and 25 exist only as photographs. Of the 64, eight came back as fragments and are marked for retyping. The importer reports all three numbers rather than importing 64 and calling it done.
 
 **Phase 3 — MCP server.** Thirteen tools with the §6 descriptions, bearer auth, calling both backends.
 *Done when:* connected to Claude Desktop, a single conversation plans three dinners *including one freeform*, scales one recipe to 6 servings, adds two pantry items, and builds a shopping list — with every write visible in the database and correctly scoped to the household.
