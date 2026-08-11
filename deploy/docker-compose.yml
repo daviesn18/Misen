@@ -91,8 +91,14 @@ services:
       MISEN_DAILY_MESSAGE_CAP: ${MISEN_DAILY_MESSAGE_CAP:-100}
       MISEN_MEALIE_URL: http://mealie:9000
       MISEN_MEALIE_TOKEN: ${MEALIE_API_TOKEN:-}
-      MISEN_MCP_URL: https://${MCP_DOMAIN:-mcp.invalid}
+      # Public URL with the /mcp path, not the internal http://mcp:8001. This
+      # value is handed to Anthropic, whose servers make the connection — so it
+      # has to be the address the open internet can reach, and it has to carry
+      # the path the FastMCP app is actually mounted at.
+      MISEN_MCP_URL: https://${MCP_DOMAIN:-mcp.invalid}/mcp
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MISEN_INSTACART_MCP_URL: ${INSTACART_MCP_URL:-}
+      MISEN_INSTACART_API_KEY: ${INSTACART_API_KEY:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
       interval: 30s

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "8a75903e-e705-49f1-9df9-d107e68c7553",
     "name": "Misen Companion API",
-    "description": "Every endpoint in PRD \u00a75, plus the failure paths.\n\nSet `base_url` and `token` in the collection variables. `token` is a member token minted by `scripts/provision.py`; it resolves to both a member and a household, so no request ever names a household.\n\nRequests that capture an id into a variable are marked \u2014 run the folders in order the first time.",
+    "description": "Every endpoint in PRD §5, plus the failure paths.\n\nSet `base_url` and `token` in the collection variables. `token` is a member token minted by `scripts/provision.py`; it resolves to both a member and a household, so no request ever names a household.\n\nRequests that capture an id into a variable are marked — run the folders in order the first time.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -39,6 +39,11 @@
     {
       "key": "shopping_item_id",
       "value": ""
+    },
+    {
+      "key": "conversation_id",
+      "value": "",
+      "description": "Set automatically by the first Basil request."
     }
   ],
   "item": [
@@ -206,7 +211,7 @@
           ]
         },
         {
-          "name": "List \u2014 fridge only",
+          "name": "List — fridge only",
           "request": {
             "method": "GET",
             "header": [],
@@ -240,7 +245,7 @@
           ]
         },
         {
-          "name": "List \u2014 including used",
+          "name": "List — including used",
           "request": {
             "method": "GET",
             "header": [],
@@ -331,7 +336,7 @@
                 "{{pantry_item_id}}"
               ]
             },
-            "description": "Sets used_at. NOT a delete \u2014 the row stays queryable.",
+            "description": "Sets used_at. NOT a delete — the row stays queryable.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"used\": true\n}"
@@ -423,7 +428,7 @@
       "description": "Two weeks. An empty night is the absence of a row.",
       "item": [
         {
-          "name": "Get \u2014 this week and next",
+          "name": "Get — this week and next",
           "request": {
             "method": "GET",
             "header": [],
@@ -451,7 +456,7 @@
           ]
         },
         {
-          "name": "Get \u2014 one week",
+          "name": "Get — one week",
           "request": {
             "method": "GET",
             "header": [],
@@ -485,7 +490,7 @@
           ]
         },
         {
-          "name": "Get \u2014 a specific week",
+          "name": "Get — a specific week",
           "request": {
             "method": "GET",
             "header": [],
@@ -673,7 +678,7 @@
     },
     {
       "name": "Recipes",
-      "description": "Scaling \u2014 the one recipe operation Companion owns.",
+      "description": "Scaling — the one recipe operation Companion owns.",
       "item": [
         {
           "name": "Scaled to 8",
@@ -850,7 +855,7 @@
           ]
         },
         {
-          "name": "Get \u2014 unchecked only",
+          "name": "Get — unchecked only",
           "request": {
             "method": "GET",
             "header": [],
@@ -1063,7 +1068,7 @@
     },
     {
       "name": "Reminders",
-      "description": "Preference only \u2014 the notification fires on the device.",
+      "description": "Preference only — the notification fires on the device.",
       "item": [
         {
           "name": "Get",
@@ -1207,11 +1212,171 @@
       ]
     },
     {
+      "name": "Basil",
+      "description": "The chat proxy. `POST /generate/chat` answers with Server-Sent Events, not JSON — Postman shows the raw stream, which is the point: you can see whether the events arrive spread out or all at once. Exactly one terminal event arrives, `done` or `error`.",
+      "item": [
+        {
+          "name": "Chat — new conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generate/chat",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "generate",
+                "chat"
+              ]
+            },
+            "description": "Starts a thread. The conversation id comes back on the first event (`event: start`); send it back as `conversation_id` to continue. 503 means the server has no ANTHROPIC_API_KEY or no MCP_DOMAIN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What can I make tonight?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"streams SSE\", () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream'));",
+                  "const body = pm.response.text();",
+                  "pm.test(\"starts with a conversation id\", () => pm.expect(body).to.include('event: start'));",
+                  "pm.test(\"ends once\", () => {",
+                  "    const terminal = (body.match(/event: (done|error)/g) || []).length;",
+                  "    pm.expect(terminal).to.eql(1);",
+                  "});",
+                  "const start = body.split('\\n').find(l => l.startsWith('data: '));",
+                  "if (start) { pm.collectionVariables.set('conversation_id', JSON.parse(start.slice(6)).conversation_id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chat — continue the thread",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generate/chat",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "generate",
+                "chat"
+              ]
+            },
+            "description": "Replays the stored transcript, including the tool calls, so Basil remembers what it just did. Run the request above first — it saves `conversation_id` as a collection variable.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Plan that for Tuesday.\",\n  \"conversation_id\": \"{{conversation_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"same thread\", () => pm.expect(pm.response.text()).to.include(pm.collectionVariables.get('conversation_id')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/generate/conversations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "generate",
+                "conversations"
+              ]
+            },
+            "description": "This member's threads, newest first. Another member of the same household sees none of these — shared data, separate voices."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"is a list\", () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read one conversation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/generate/conversations/{{conversation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "generate",
+                "conversations",
+                "{{conversation_id}}"
+              ]
+            },
+            "description": "Text and tool names, not raw content blocks — the blocks stay server-side for replay. 404 for a thread that isn't yours."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Failure paths",
       "description": "Every error uses one envelope: {\"error\": {\"code\", \"message\"}}. `message` is written to be shown to a person.",
       "item": [
         {
-          "name": "No token \u2192 401",
+          "name": "No token → 401",
           "request": {
             "method": "GET",
             "header": [],
@@ -1242,7 +1407,7 @@
           ]
         },
         {
-          "name": "Unknown path \u2192 404",
+          "name": "Unknown path → 404",
           "request": {
             "method": "GET",
             "header": [],
@@ -1270,7 +1435,7 @@
           ]
         },
         {
-          "name": "Bad location \u2192 422",
+          "name": "Bad location → 422",
           "request": {
             "method": "POST",
             "header": [
@@ -1307,7 +1472,7 @@
           ]
         },
         {
-          "name": "Missing name \u2192 422",
+          "name": "Missing name → 422",
           "request": {
             "method": "POST",
             "header": [
@@ -1344,7 +1509,7 @@
           ]
         },
         {
-          "name": "Unknown pantry item \u2192 404",
+          "name": "Unknown pantry item → 404",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1382,7 +1547,7 @@
           ]
         },
         {
-          "name": "Empty menu entry \u2192 400",
+          "name": "Empty menu entry → 400",
           "request": {
             "method": "PUT",
             "header": [],
@@ -1416,7 +1581,7 @@
           ]
         },
         {
-          "name": "Unknown recipe \u2192 404",
+          "name": "Unknown recipe → 404",
           "request": {
             "method": "PUT",
             "header": [
@@ -1455,7 +1620,7 @@
           ]
         },
         {
-          "name": "Cook from another household \u2192 400",
+          "name": "Cook from another household → 400",
           "request": {
             "method": "PUT",
             "header": [
@@ -1494,7 +1659,7 @@
           ]
         },
         {
-          "name": "Mid-week date \u2192 400",
+          "name": "Mid-week date → 400",
           "request": {
             "method": "GET",
             "header": [],
@@ -1528,7 +1693,7 @@
           ]
         },
         {
-          "name": "weeks=0 \u2192 422",
+          "name": "weeks=0 → 422",
           "request": {
             "method": "GET",
             "header": [],
@@ -1562,7 +1727,7 @@
           ]
         },
         {
-          "name": "Unknown recipe \u2192 404",
+          "name": "Unknown recipe → 404",
           "request": {
             "method": "GET",
             "header": [],
@@ -1592,7 +1757,7 @@
           ]
         },
         {
-          "name": "servings=0 \u2192 422",
+          "name": "servings=0 → 422",
           "request": {
             "method": "GET",
             "header": [],
@@ -1628,7 +1793,7 @@
           ]
         },
         {
-          "name": "Empty items \u2192 422",
+          "name": "Empty items → 422",
           "request": {
             "method": "POST",
             "header": [
@@ -1665,7 +1830,7 @@
           ]
         },
         {
-          "name": "Unknown shopping item \u2192 404",
+          "name": "Unknown shopping item → 404",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1703,7 +1868,7 @@
           ]
         },
         {
-          "name": "Hour with no day \u2192 400",
+          "name": "Hour with no day → 400",
           "request": {
             "method": "PUT",
             "header": [
@@ -1740,7 +1905,7 @@
           ]
         },
         {
-          "name": "Bad day \u2192 422",
+          "name": "Bad day → 422",
           "request": {
             "method": "PUT",
             "header": [
@@ -1762,6 +1927,49 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"day\": \"funday\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Empty message → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generate/chat",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "generate",
+                "chat"
+              ]
+            },
+            "description": "Whitespace is not a message.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [

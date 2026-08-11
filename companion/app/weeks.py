@@ -9,7 +9,7 @@ response is computed here.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.models import DAYS
@@ -35,6 +35,21 @@ def today_in(timezone_name: str) -> date:
         # a few hours; a 500 is wrong all the way.
         tz = ZoneInfo("UTC")
     return datetime.now(tz).date()
+
+
+def day_start_utc(timezone_name: str, day: date) -> datetime:
+    """Naive-UTC instant at which `day` began in the household's timezone.
+
+    Daily counters (Basil's message cap) have to roll over at the household's
+    midnight, not the server's. Comparing against a UTC date would give a New
+    York household a day that ends at 8pm.
+    """
+    try:
+        tz = ZoneInfo(timezone_name)
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = ZoneInfo("UTC")
+    local_midnight = datetime.combine(day, time.min, tzinfo=tz)
+    return local_midnight.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
 
 
 def week_start_for(value: date, week_starts_on: str) -> date:

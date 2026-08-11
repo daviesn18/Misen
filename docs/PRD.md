@@ -401,6 +401,32 @@ stream = client.beta.messages.stream(
 
 **Streaming is required, not a nicety.** At `max_tokens=16000` a non-streaming request risks an SDK HTTP timeout. Use `.stream()` and `.get_final_message()`. It also produces the typing feel the design implies, so there is no version of this where we don't stream.
 
+**`pause_turn` is the normal path, not an edge case.** *(Added in phase 5 — this was missing from rev 1 and it is the single most load-bearing detail in the whole section.)* Anthropic runs the tool loop server-side and stops it after ten tool calls, handing the turn back with `stop_reason: "pause_turn"` and no reply. "Plan my dinners for the week" is `get_weekly_menu` + `get_pantry_items` + a few searches + seven `set_weekly_menu` calls + `build_shopping_list` — comfortably past ten. A proxy that treats `pause_turn` as the end of a turn stops somewhere around Thursday and reports success.
+
+Resume by sending the assistant's own content back and requesting again, up to a ceiling (six). The docs show *replacing* the message list with a single assistant message; Misen **accumulates** into one instead:
+
+```python
+messages = [*history, user_turn, {"role": "assistant", "content": all_blocks_so_far}]
+```
+
+Appending a second assistant message would break the alternating-role rule the API enforces. Replacing the first would drop the tool calls it already made. One growing assistant turn is the only shape that satisfies both, and it is what gets persisted at the end — so the transcript holds every tool call, not just the last continuation's.
+
+**The SSE protocol, which the app depends on.**
+
+```
+event: start   {"conversation_id": "..."}
+event: text    {"text": "..."}                                   append to the bubble
+event: tool    {"name": "get_pantry_items", "state": "running"}   also "done" | "error"
+event: done    {"conversation_id", "stop_reason", "usage": {...}}
+event: error   {"code", "message"}                               show it, stop the spinner
+```
+
+Exactly one terminal event arrives, `done` or `error`. Failures knowable before the first byte — no API key, `can_use_basil` off, daily cap — are real HTTP status codes (503, 403, 429); everything after the response has started has to be an `error` event, because the status line is long gone.
+
+Tool *names* go over the wire, not phrases. Turning `get_pantry_items` into "Checking the pantry…" is presentation, and the app already owns presentation.
+
+**A turn is persisted as a pair or not at all.** The user message and the assistant reply are written in one transaction after the turn succeeds. Writing the user message up front looks tidier and is a trap: a turn that dies mid-stream would leave the thread ending on a user message, and the next request would then send two user turns in a row — which the API rejects. One failed turn would break that conversation permanently.
+
 **Model is a config value.** `MISEN_CHAT_MODEL`, defaulting to `claude-opus-5` ($5/$25 per MTok). The source plan recommended Claude Haiku 4.5 ($1/$5, 200K context) on the grounds that meal planning is "mostly tool orchestration". I'd push back gently: the tool calls are the easy part, and the value is judgment — reading a half-empty fridge and a Tuesday with 25 minutes in it and proposing something good. Run the default for a week, look at `chat_usage`, then decide. Swapping the string is a one-line change and that's the whole reason it's config.
 
 **Prompt caching.** The system prompt and tool definitions are stable across every turn; put a `cache_control` breakpoint on the last system block. Cache reads cost ~0.1× and this prefix is sent on every message. Do not interpolate the date or the member's name into the system prompt — that invalidates the cached prefix on every request. Volatile context goes in the first user message.
@@ -414,7 +440,7 @@ Not final text, but the shape and the load-bearing content:
 - **The standing workflow.** Check the menu (both weeks) before planning so you don't overwrite decided nights. Check the pantry before suggesting. Lead with what's about to expire. Search the library before inventing.
 - **Freeform meals are fine.** Not every night needs a recipe. Offer "Leftovers" and "Takeout" as real options when a week is looking overloaded.
 - **Write discipline.** Confirm before overwriting a planned night. Never mark something used unless the user said so. Never clear a night except on explicit request.
-- **Instacart.** After a week is planned, offer to cart what's missing. Always show what's in the cart and get approval before any paid order — the standing rule, restated here because it matters most in the one flow that spends money.
+- **Instacart.** After a week is planned, offer to cart what's missing. Always show what's in the cart and get approval before any paid order — the standing rule, restated here because it matters most in the one flow that spends money. **This paragraph is conditional**: it is only in the prompt when Instacart is configured (below), because a Basil that offers to order groceries it has no way to order is worse than one that never mentions it.
 - **Brevity.** This renders in chat bubbles on a phone. Long answers are wrong answers.
 
 ### Conversations
@@ -423,11 +449,27 @@ One thread per member, scoped by `member_id` *and* `household_id`. Nick can't re
 
 Members with `can_use_basil = false` get a `403` and the app hides the tab rather than showing a dead end.
 
+### Instacart, without any Instacart code
+
+*(Settled in phase 5. Decision 2 says "no Instacart code anywhere in v1, but Basil already has the connector" — which was true of claude.ai and not of the Messages API, where Basil has whatever tools we hand it. The gap is closed without breaking the decision.)*
+
+Instacart publishes its own remote MCP server. Misen declares it as a **second** `mcp_servers` entry with a second `mcp_toolset`, exactly like its own — so ordering costs one config block and still ships zero lines of Instacart integration.
+
+```
+INSTACART_MCP_URL=      # https://docs.instacart.com/developer_platform_api
+INSTACART_API_KEY=
+```
+
+Both blank is the default and means Instacart is off: no server declared, no toolset, and the Instacart paragraph is absent from the system prompt. Set both and all three appear together — they are built from one condition so they can't drift into the 400 the API returns when a declared server has no toolset.
+
+The tools create a shopping list on Instacart Marketplace for the user to review and check out themselves. That is what the phase 5 criterion means by "a reviewable cart", and it keeps the final tap — the one that spends money — with a person.
+
 ### Cost guardrails
 
-1. Per-member daily message cap (config, default 100). Exceeded → a friendly refusal, not a 500.
-2. Truncate history at ~40 turns before sending; conversations that long have stopped being about dinner.
-3. Log every turn to `chat_usage`. A weekly glance at the sum is the whole cost-monitoring strategy and it's sufficient.
+1. Per-member daily message cap (config, default 100). Exceeded → a friendly refusal, not a 500. The day rolls over at the *household's* midnight, not the server's — a UTC box would end a New York household's day at 8pm.
+2. Truncate history at ~40 turns before sending; conversations that long have stopped being about dinner. A slice can land on an assistant message, so the leading orphan is dropped: the API requires a conversation to begin with a user turn.
+3. Log every turn to `chat_usage` — one row per *turn*, not per API call, so the `pause_turn` continuations are summed into it. A weekly glance at the sum is the whole cost-monitoring strategy and it's sufficient.
+4. One cache breakpoint on the last system block. It covers the tool definitions too, which are the expensive part: Anthropic expands the MCP toolset into thirteen full schemas on every request.
 
 ---
 
@@ -586,6 +628,8 @@ Each phase has a "done when" someone else could verify.
 
 **Phase 5 — Basil.** `/generate/chat` with the corrected MCP connector call, SSE, chat UI, system prompt, usage logging, capability gating.
 *Done when:* "plan my dinners for the week" from inside the app produces seven filled nights on the Menu tab, at least one of which Basil correctly chose to make freeform; and asking it to order the missing groceries produces a reviewable Instacart cart.
+**Server side done.** Three endpoints, 37 tests, and the connector shape asserted against the SDK's own event classes rather than a dict-shaped fake. Streaming was verified against a real uvicorn with a timer, not just a test client that would collect a buffered body and call it a stream. `pause_turn` handling was added — it is not in rev 1 of this section and without it the headline criterion cannot pass.
+**Not done:** the criterion names *the app*, and there is no app until phase 4. What can't be checked from here is whether the system prompt actually produces good dinners — that needs a real key, a reachable MCP host, and a week of use.
 
 **Phase 6 — iPad and Cook Mode.** `NavigationSplitView`, two-week side-by-side Menu, multi-column Pantry and Shopping, Cook Mode with scaled ingredients, wake lock, and step timers.
 *Done when:* a real dinner is cooked start to finish from the iPad on the counter without the screen sleeping, without leaving Cook Mode, and with the ingredient checklist used.

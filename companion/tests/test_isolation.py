@@ -16,10 +16,12 @@ the schema grows.
 
 from __future__ import annotations
 
+import json
 from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.db import Base
 
@@ -174,22 +176,60 @@ def test_cannot_assign_a_cook_from_another_household(
     assert response.json()["error"]["code"] == "unknown_member"
 
 
+# --- chat -----------------------------------------------------------------
+
+
+def test_conversations_are_invisible_across_households(
+    client: TestClient, nick: dict[str, str], sam: dict[str, str]
+) -> None:
+    response = client.post("/generate/chat", headers=nick, json={"message": "plan tuesday"})
+    first_payload = next(
+        line[len("data: ") :] for line in response.text.splitlines() if line.startswith("data: ")
+    )
+    conversation = json.loads(first_payload)["conversation_id"]
+
+    assert client.get("/generate/conversations", headers=sam).json() == []
+    # Sam holding the exact id still finds nothing — the id is not the control.
+    assert client.get(f"/generate/conversations/{conversation}", headers=sam).status_code == 404
+    assert client.get(f"/generate/conversations/{conversation}", headers=nick).status_code == 200
+
+
+def test_chat_usage_is_recorded_against_the_right_household(
+    client: TestClient, nick: dict[str, str], db, households: dict
+) -> None:
+    """`chat_usage` has no endpoint, so this asserts the column directly.
+
+    It is the row that answers "is Basil expensive?", and a spend question
+    answered across two households is worse than no answer.
+    """
+    from app.models import ChatUsage
+
+    client.post("/generate/chat", headers=nick, json={"message": "hi"})
+
+    rows = db.execute(select(ChatUsage)).scalars().all()
+    assert [row.household_id for row in rows] == [households["first"]["id"]]
+
+
 # --- the guard that keeps this file honest --------------------------------
 
 # Tables asserted on above. Adding a tenant-scoped table without adding
 # coverage here should break the build, not pass quietly.
-COVERED = {"pantry_items", "menu_entries", "members", "households"}
-# Chat tables have no endpoints until phase 5. They carry household_id from
-# this migration; the isolation assertions land with the routes that read them.
-DEFERRED = {"chat_messages", "chat_usage"}
+COVERED = {
+    "pantry_items",
+    "menu_entries",
+    "members",
+    "households",
+    "chat_messages",
+    "chat_usage",
+}
 
 
 def test_every_tenant_table_is_covered() -> None:
     tables = set(Base.metadata.tables)
-    uncovered = tables - COVERED - DEFERRED
+    uncovered = tables - COVERED
     assert not uncovered, (
         f"New table(s) {sorted(uncovered)} have no cross-tenant isolation test. "
-        f"Add one here, or add the name to DEFERRED with a reason."
+        f"Add one here, or add the name to COVERED with a reason."
     )
 
 

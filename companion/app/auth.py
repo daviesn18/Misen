@@ -55,7 +55,14 @@ class Principal:
         return self.member.id
 
 
-def _bearer(request: Request) -> str:
+def bearer_token(request: Request) -> str:
+    """The raw token as presented.
+
+    Public because Basil needs it: `mcp_servers[].authorization_token` sends
+    the caller's own token to Anthropic so the MCP server can be called back
+    with the caller's exact reach. It is deliberately *not* carried on
+    `Principal` — only the one route that forwards it should have to touch it.
+    """
     header = request.headers.get("authorization", "")
     scheme, _, token = header.partition(" ")
     if scheme.lower() != "bearer" or not token.strip():
@@ -66,7 +73,7 @@ def _bearer(request: Request) -> str:
 def current_principal(
     request: Request, db: Annotated[Session, Depends(get_db)]
 ) -> Principal:
-    token = _bearer(request)
+    token = bearer_token(request)
     member = db.execute(
         select(Member).where(Member.token_hash == hash_token(token))
     ).scalar_one_or_none()

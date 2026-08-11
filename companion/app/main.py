@@ -1,8 +1,7 @@
 """Misen Companion API.
 
-Pantry, weekly menu, recipe scaling, shopping, and reminders (PRD §5). The
-Basil chat proxy arrives in phase 5 and is the only endpoint table row still
-missing.
+Every endpoint in PRD §5: pantry, weekly menu, recipe scaling, shopping,
+reminders, and Basil.
 """
 
 from __future__ import annotations
@@ -16,11 +15,12 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.anthropic_client import close_anthropic
 from app.config import get_settings
 from app.db import engine
 from app.errors import install_error_handlers
 from app.mealie import close_mealie
-from app.routers import menu, meta, pantry, recipes, reminders, shopping
+from app.routers import generate, menu, meta, pantry, recipes, reminders, shopping
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,10 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
-    # One pooled httpx client serves every Mealie call; close it on the way out
-    # so a reload doesn't leak sockets.
+    # One pooled httpx client serves every Mealie call, and one more serves
+    # Anthropic; close both on the way out so a reload doesn't leak sockets.
     close_mealie()
+    await close_anthropic()
 
 
 app = FastAPI(
@@ -55,6 +56,7 @@ app.include_router(menu.router)
 app.include_router(recipes.router)
 app.include_router(shopping.router)
 app.include_router(reminders.router)
+app.include_router(generate.router)
 
 
 @app.get("/health", tags=["ops"])

@@ -82,7 +82,7 @@ Fill in `.env`. The ones with no default:
 | `MEALIE_DOMAIN` / `API_DOMAIN` / `MCP_DOMAIN` | From step 2 |
 | `MEALIE_DEFAULT_EMAIL` | Login for Mealie's first admin account |
 | `MEALIE_PUID` / `MEALIE_PGID` | `id -u` and `id -g` |
-| `ANTHROPIC_API_KEY` | console.anthropic.com — phase 5, can stay blank now |
+| `ANTHROPIC_API_KEY` | console.anthropic.com — Basil is off until this is set |
 | `MEALIE_API_TOKEN` | Minted in step 5, blank for now |
 | `DATA_DIR` / `BACKUP_DIR` | Absolute paths, e.g. `/srv/misen/data` |
 
@@ -163,7 +163,40 @@ and set `base_url` and `token`.
 
 ---
 
-## 7. Backups
+## 7. Check Basil
+
+Basil needs two things the other endpoints don't: an `ANTHROPIC_API_KEY`, and
+an `mcp.` hostname that Anthropic's servers can actually reach. Both fail
+loudly, which is the point.
+
+```sh
+curl -N -X POST https://api.misen.<domain>/generate/chat \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"message":"what is in the pantry?"}'
+```
+
+`-N` matters — without it curl buffers and you learn nothing about streaming.
+You should see events arrive one at a time, ending in `event: done`.
+
+| What comes back | What it means |
+|---|---|
+| `503 basil_unconfigured` | `ANTHROPIC_API_KEY` or `MCP_DOMAIN` is blank in `.env` |
+| `403 basil_not_allowed` | That token belongs to a child member |
+| `event: error` with `basil_failed` | The API rejected the request. Check `docker compose logs companion` — the status code is logged. |
+| Text, but Basil says it can't see the pantry | Anthropic can't reach `mcp.misen.<domain>`. Test it from off-network, not from the host. |
+| Everything arrives at once at the end | `flush_interval -1` is missing from the api block in the Caddyfile |
+
+**Ordering groceries is optional and off by default.** Misen has no Instacart
+code; Basil orders by being handed Instacart's own MCP server as a second
+toolset. Set `INSTACART_MCP_URL` and `INSTACART_API_KEY` (get a key at
+[docs.instacart.com](https://docs.instacart.com/developer_platform_api)) and
+the tools and the matching paragraph of Basil's prompt appear together. Leave
+them blank and Basil never brings ordering up.
+
+---
+
+## 8. Backups
 
 ```sh
 ./backup.sh          # run once by hand and read the output
@@ -180,7 +213,7 @@ disk failure takes both.
 
 ---
 
-## 8. Rehearse a restore
+## 9. Rehearse a restore
 
 This is an acceptance criterion, not an optional extra. An untested backup is a
 hope.
@@ -214,6 +247,7 @@ Phase 0 is complete when all of these hold:
 - [ ] `./restore.sh --into …` completes and a scratch Mealie starts against it
 - [ ] `curl -H "Authorization: Bearer <token>" .../me` returns the member you minted
 - [ ] `curl -X POST https://mcp.misen.<domain>/mcp` returns **401** from off-network — proof it is reachable and refusing anonymous callers
+- [ ] `POST /generate/chat` streams events one at a time and ends in `event: done`, and Basil can name something that is actually in the pantry
 
 ---
 
@@ -246,4 +280,7 @@ and read Mealie's release notes.
 | `required variable … is missing a value` | A key in `.env.example` is blank in `.env`. |
 | Recipes and shopping 502 while the pantry and menu work | `MEALIE_API_TOKEN` is blank or wrong in `.env` (step 5). Companion stays healthy on purpose — only the Mealie-backed half is down. |
 | Basil replies arrive all at once instead of streaming | `flush_interval -1` missing from the api block in the Caddyfile. |
+| Basil answers but has no tools, or says the pantry is empty when it isn't | Anthropic couldn't reach `MISEN_MCP_URL`. It must be the **public** URL including the `/mcp` path — `https://mcp.misen.<domain>/mcp`, never `http://mcp:8001`. Anthropic's servers make that connection, not Companion. |
+| `503 basil_unconfigured` | `ANTHROPIC_API_KEY` or `MCP_DOMAIN` is blank in `.env`. |
+| `429 daily_cap_reached` | `MISEN_DAILY_MESSAGE_CAP` hit for that member today. Resets at the household's midnight, not UTC. |
 | Ran out of disk | Old archives. Lower `BACKUP_RETAIN_DAYS`, confirm off-box copies are working. |
