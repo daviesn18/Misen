@@ -126,6 +126,29 @@ sudo iptables -L INPUT -n --line-numbers
 Instances are unreachable until every layer is open, and the symptom is step 4
 looping on certificate errors rather than anything that names the firewall.
 
+**Prove it from outside before going further.** Every layer above can look
+correct from the host and still drop traffic at the edge, and the first thing
+to discover that would otherwise be Caddy, against a rate limit of 5 failures
+per hostname per hour. From your own machine, not the host, and before anything
+is listening:
+
+```sh
+nc -vz -w 5 <host-ip> 80
+nc -vz -w 5 <host-ip> 443
+```
+
+Nothing is bound to those ports yet, so neither will connect. What matters is
+how it fails:
+
+| Result | Meaning |
+|---|---|
+| `Connection refused` | The packet reached the host and the OS answered. Every layer is open — proceed. |
+| Timeout, no response | Something is dropping it silently: the VCN security list, firewalld, or iptables. Fix before step 4. |
+
+A refusal is the good outcome here. It is the host actively saying nothing is
+listening yet, which is exactly true at this point and proves the path is
+clear.
+
 ---
 
 ## 2. DNS
@@ -172,9 +195,16 @@ records — host on the left, exactly as typed into the panel:
 | `mcp.misen` | A | `64.181.237.139` |
 
 Giving `mealie.misen.stackthelineup.com`, `api.misen.stackthelineup.com` and
-`mcp.misen.stackthelineup.com`. The apex and `www` keep whatever Squarespace
-already serves — these three sit alongside, and nothing about the existing site
-changes.
+`mcp.misen.stackthelineup.com`.
+
+Squarespace is registrar and DNS host only — the apex is served from GitHub
+Pages, and resolves to its addresses rather than to anything Squarespace runs.
+The three records above sit alongside that untouched; none of this changes what
+the existing site serves.
+
+Squarespace's lowest available TTL is 30 minutes, so a wrong record is cached
+for half an hour rather than the minute a 60s TTL would give you. That is the
+argument for checking with `dig` before boot rather than after.
 
 Squarespace is authoritative DNS only, with no proxy layer, so the records
 resolve straight to the host. Two things to confirm in the panel: that the
