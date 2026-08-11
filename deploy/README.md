@@ -8,6 +8,36 @@ Phase 0 is done when the last checkbox in [Verify](#verify) is ticked.
 
 ---
 
+## Before you start
+
+Four of these block a step partway through, so it is worth having them in hand
+rather than discovering it at step 6 with a half-built stack.
+
+**Accounts and access**
+
+- [ ] A host — see [step 0](#0-pick-a-host). Oracle Cloud accounts can take a
+      few hours to verify, so start that first if you're going that way
+- [ ] A domain you can add DNS records to
+- [ ] An Anthropic API key ([console.anthropic.com](https://console.anthropic.com)) —
+      Basil is off without it, though everything else works
+
+**Decisions** — `provision.py` in step 6 takes these as arguments and there is
+no interactive prompt
+
+| | Example |
+|---|---|
+| Household name | `Davies` |
+| Timezone | `America/New_York` — drives week boundaries and reminder times |
+| Week starts on | `monday` or `sunday`. Changing it later re-anchors every stored week |
+| Each member | `name:initials:color[:role]` — `Nick:N:terracotta`, `Mara:M:green`. Colors: `terracotta`, `green`, `gold`, `plum` |
+
+Reminder day and hour are set per member from the app later, not here.
+
+**Somewhere to keep secrets.** Step 6 prints one token per person, once, and
+never again. A password manager entry per member, made before you run it.
+
+---
+
 ## 0. Pick a host
 
 Any x86 or ARM box with 2 GB RAM and 25 GB disk. Mealie alone wants ~1 GB, and
@@ -163,7 +193,42 @@ and set `base_url` and `token`.
 
 ---
 
-## 7. Check Basil
+## 7. Load the recipes
+
+The library is empty until something puts recipes in it, and an empty library
+makes the next two steps hard to judge — Basil has nothing to plan with, and
+the shopping list has nothing to build from.
+
+```sh
+cd ../scripts
+uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
+
+export MEALIE_API_TOKEN=<the token from step 5>
+python -m recipes import ../docs/recipes/stealth-health-slow-cooker.json \
+    --url https://mealie.misen.<domain> --dry-run   # read this first
+python -m recipes import ../docs/recipes/stealth-health-slow-cooker.json \
+    --url https://mealie.misen.<domain>
+```
+
+56 recipes load. Eight more are held back automatically — their pages were
+photographed in two columns and came back as fragments; they are listed with
+page numbers in
+[the review file](../docs/recipes/stealth-health-slow-cooker-review.md) and
+want typing in by hand. A further 25 in that cookbook's contents aren't in the
+source file at all.
+
+**Re-running is safe.** Existing recipes are skipped, so a run that dies at
+number forty finishes the job rather than creating forty duplicates.
+
+Then open one in Mealie and check the ingredients read as they do in the book,
+and that the servings count came across — Misen scales from that number, and a
+recipe missing it can't be scaled at all.
+
+See [`scripts/README.md`](../scripts/README.md) for other sources.
+
+---
+
+## 8. Check Basil
 
 Basil needs two things the other endpoints don't: an `ANTHROPIC_API_KEY`, and
 an `mcp.` hostname that Anthropic's servers can actually reach. Both fail
@@ -196,7 +261,7 @@ them blank and Basil never brings ordering up.
 
 ---
 
-## 8. Backups
+## 9. Backups
 
 ```sh
 ./backup.sh          # run once by hand and read the output
@@ -213,7 +278,7 @@ disk failure takes both.
 
 ---
 
-## 9. Rehearse a restore
+## 10. Rehearse a restore
 
 This is an acceptance criterion, not an optional extra. An untested backup is a
 hope.
@@ -248,6 +313,7 @@ Phase 0 is complete when all of these hold:
 - [ ] `curl -H "Authorization: Bearer <token>" .../me` returns the member you minted
 - [ ] `curl -X POST https://mcp.misen.<domain>/mcp` returns **401** from off-network — proof it is reachable and refusing anonymous callers
 - [ ] `POST /generate/chat` streams events one at a time and ends in `event: done`, and Basil can name something that is actually in the pantry
+- [ ] Mealie shows the imported recipes, and one spot-checked recipe has its ingredients and serving count intact
 
 ---
 
