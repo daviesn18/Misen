@@ -36,6 +36,8 @@ services:
         condition: service_healthy
       mealie:
         condition: service_started
+      mcp:
+        condition: service_started
     networks: [misen]
 
   # ---------------------------------------------------------------------
@@ -90,7 +92,6 @@ services:
       MISEN_MEALIE_URL: http://mealie:9000
       MISEN_MEALIE_TOKEN: ${MEALIE_API_TOKEN:-}
       MISEN_MCP_URL: https://${MCP_DOMAIN:-mcp.invalid}
-      MISEN_MCP_TOKEN: ${MCP_TOKEN:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
@@ -102,26 +103,25 @@ services:
 
   # ---------------------------------------------------------------------
   # MCP — the tool surface Basil and (later) claude.ai call.
-  # Uncomment in phase 3, along with the matching site block in Caddyfile.
-  # It is commented out rather than stubbed so that `compose up` works today
-  # instead of crash-looping on a service with no code behind it.
+  # Stateless: no volumes, no database, no credentials of its own beyond the
+  # Mealie token. Callers present their own member token and it is forwarded
+  # to Companion, so this service can reach exactly what its caller could.
   # ---------------------------------------------------------------------
-  # mcp:
-  #   build:
-  #     context: ../mcp
-  #     dockerfile: Dockerfile
-  #   image: misen-mcp:dev
-  #   container_name: misen-mcp
-  #   restart: unless-stopped
-  #   environment:
-  #     MISEN_COMPANION_URL: http://companion:8000
-  #     MISEN_MEALIE_URL: http://mealie:9000
-  #     MISEN_MEALIE_TOKEN: ${MEALIE_API_TOKEN:-}
-  #     MCP_TOKEN: ${MCP_TOKEN:-}
-  #   depends_on:
-  #     companion:
-  #       condition: service_healthy
-  #   networks: [misen]
+  mcp:
+    build:
+      context: ../mcp
+      dockerfile: Dockerfile
+    image: misen-mcp:dev
+    container_name: misen-mcp
+    restart: unless-stopped
+    environment:
+      MISEN_COMPANION_URL: http://companion:8000
+      MISEN_MEALIE_URL: http://mealie:9000
+      MISEN_MEALIE_TOKEN: ${MEALIE_API_TOKEN:-}
+    depends_on:
+      companion:
+        condition: service_healthy
+    networks: [misen]
 
 networks:
   misen:

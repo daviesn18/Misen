@@ -47,7 +47,7 @@ Three A records (plus AAAA if the host has IPv6), all pointing at the host:
 |---|---|
 | `mealie.misen.<domain>` | Mealie UI and API |
 | `api.misen.<domain>` | Companion API |
-| `mcp.misen.<domain>` | MCP server — create it now, it stays unused until phase 3 |
+| `mcp.misen.<domain>` | MCP server — **must be publicly reachable**, see below |
 
 **Let these propagate before starting the stack.** Caddy requests certificates
 on boot, and Let's Encrypt rate-limits failures at 5 per hostname per hour.
@@ -59,6 +59,11 @@ dig +short api.misen.<domain>    # must return your host's IP
 
 Testing against a flaky record? Uncomment `acme_ca` (staging) in the Caddyfile
 first — staging certs are untrusted by browsers but aren't rate limited.
+
+**`mcp.` is the one hostname that has to be reachable from the open internet.**
+When Basil uses a tool, Anthropic's servers make the request to it — so it
+cannot live behind a VPN, a Tailscale-only network, or an IP allowlist. The
+other two could, if you ever wanted them to.
 
 ---
 
@@ -77,7 +82,6 @@ Fill in `.env`. The ones with no default:
 | `MEALIE_DOMAIN` / `API_DOMAIN` / `MCP_DOMAIN` | From step 2 |
 | `MEALIE_DEFAULT_EMAIL` | Login for Mealie's first admin account |
 | `MEALIE_PUID` / `MEALIE_PGID` | `id -u` and `id -g` |
-| `MCP_TOKEN` | `openssl rand -base64 32` |
 | `ANTHROPIC_API_KEY` | console.anthropic.com — phase 5, can stay blank now |
 | `MEALIE_API_TOKEN` | Minted in step 5, blank for now |
 | `DATA_DIR` / `BACKUP_DIR` | Absolute paths, e.g. `/srv/misen/data` |
@@ -209,6 +213,7 @@ Phase 0 is complete when all of these hold:
 - [ ] An off-box copy is configured in `backup.sh`
 - [ ] `./restore.sh --into …` completes and a scratch Mealie starts against it
 - [ ] `curl -H "Authorization: Bearer <token>" .../me` returns the member you minted
+- [ ] `curl -X POST https://mcp.misen.<domain>/mcp` returns **401** from off-network — proof it is reachable and refusing anonymous callers
 
 ---
 
@@ -237,6 +242,7 @@ and read Mealie's release notes.
 | Companion `unhealthy`, logs show `unable to open database file` | `DATA_DIR/companion` missing or not writable by uid 10001. |
 | Companion exits at boot with an Alembic traceback | A migration failed. It runs before uvicorn on purpose — the app never serves against a schema it doesn't match. Read the traceback, fix, `docker compose up -d --build companion`. |
 | Every request returns 401 | No members provisioned yet (step 6), or the token was pasted with a trailing newline. |
+| MCP returns 401 even with a good token | It verifies tokens by calling Companion's `/me`. If Companion is unhealthy, nobody can be verified, and 401 is the honest answer. Check `docker compose ps` first. |
 | `required variable … is missing a value` | A key in `.env.example` is blank in `.env`. |
 | Recipes and shopping 502 while the pantry and menu work | `MEALIE_API_TOKEN` is blank or wrong in `.env` (step 5). Companion stays healthy on purpose — only the Mealie-backed half is down. |
 | Basil replies arrive all at once instead of streaming | `flush_interval -1` missing from the api block in the Caddyfile. |

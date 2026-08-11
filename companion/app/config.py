@@ -36,8 +36,10 @@ class Settings(BaseSettings):
     mealie_token: str = ""
 
     # --- MCP -------------------------------------------------------------
+    # Only the URL. Phase 5 passes the *caller's own* member token to Anthropic
+    # as mcp_servers[].authorization_token — Companion already holds it in the
+    # request it is serving — so there is no second secret to configure here.
     mcp_url: str = ""
-    mcp_token: str = ""
 
     # --- Basil -----------------------------------------------------------
     chat_model: str = "claude-opus-5"

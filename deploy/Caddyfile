@@ -53,13 +53,15 @@
 }
 
 # ---------------------------------------------------------------------------
-# MCP server — phase 3. Uncomment together with the mcp service in
-# docker-compose.yml. Left commented so Caddy does not try to obtain a
-# certificate for a hostname with nothing behind it.
+# MCP server. This is the one hostname that must be reachable from the public
+# internet by something other than the household: Anthropic's servers call it
+# when Basil uses a tool, so it cannot live behind a VPN or a private network.
 # ---------------------------------------------------------------------------
-# {$MCP_DOMAIN} {
-# 	import common
-# 	reverse_proxy mcp:8001 {
-# 		flush_interval -1
-# 	}
-# }
+{$MCP_DOMAIN} {
+	import common
+	reverse_proxy mcp:8001 {
+		# MCP streams responses over SSE. Buffering them would hold a tool
+		# result until the stream closed, which reads as a hang.
+		flush_interval -1
+	}
+}

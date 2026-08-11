@@ -354,7 +354,9 @@ No `delete_recipe`, no `delete_pantry_item`, no household or member mutation. De
 
 ### Tenancy in MCP
 
-The MCP bearer token maps to a member, exactly like the Companion token — every tool call is implicitly scoped. There is no `household_id` parameter on any tool, deliberately: a model that could name a household could name the wrong one.
+The MCP bearer token *is* the Companion token — the same string, not a parallel one. The server verifies it with `GET /me` and forwards it on every call, so it is stateless: no database, no token store, and no credential that could reach a household's data on its own. There is no `household_id` parameter on any tool, deliberately: a model that could name a household could name the wrong one.
+
+This settles §10's "the MCP server holds its own bearer token per member" the simpler way. A second token per member means a second secret store, a second rotation path, and a second thing to fall out of sync — for identical blast radius, since the tool surface covers most of the API anyway. In phase 5 Companion already has the member's plaintext token in the request it is serving, so it passes that straight through as `mcp_servers[].authorization_token` without minting anything. The cost, stated plainly: that token is handed to Anthropic so their servers can call ours. Rotation is `provision.py --rotate` and it invalidates both paths at once, which is the upside of there being only one.
 
 ---
 
@@ -577,6 +579,7 @@ Each phase has a "done when" someone else could verify.
 
 **Phase 3 — MCP server.** Thirteen tools with the §6 descriptions, bearer auth, calling both backends.
 *Done when:* connected to Claude Desktop, a single conversation plans three dinners *including one freeform*, scales one recipe to 6 servings, adds two pantry items, and builds a shopping list — with every write visible in the database and correctly scoped to the household.
+**Done, mechanically.** 50 tests, plus that exact scenario driven end to end by a real MCP client against a real MCP server and a real Companion, asserting the rows in SQLite and that a second household sees none of them. What has *not* happened is a human connecting Claude Desktop to it, which needs the host — the judgement half of this criterion (do the descriptions make a model reach for the right tool?) can't be checked from here.
 
 **Phase 4 — iPhone app.** Theme, five tabs, the two-week Menu, the plan-a-meal flow, scaling UI, three forms, SwiftData cache, sync queue, local notifications.
 *Done when:* running on both phones from TestFlight; every screen matches the design at a glance; airplane mode on Shopping still checks items off and syncs on reconnect; a recipe scaled to 8 servings shows sensible quantities and honest markers on the lines that didn't scale; and the Friday reminder fires with an accurate open-night count.

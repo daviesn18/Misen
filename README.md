@@ -29,8 +29,8 @@ Two backends behind one reverse proxy — [Mealie](https://mealie.io) for recipe
 |---|---|
 | 0 — Infrastructure | code complete, awaiting a host — see [`deploy/README.md`](deploy/README.md) |
 | 1 — Companion API | done — 18 endpoints, 128 tests, [Postman collection](docs/misen.postman_collection.json) |
-| 2 — Recipe migration | not started |
-| 3 — MCP server | not started |
+| 2 — Recipe migration | not started — needs the Recipe Keeper export |
+| 3 — MCP server | done — 13 tools, 50 tests |
 | 4 — iPhone app | not started |
 | 5 — Basil | not started |
 | 6 — iPad + Cook Mode | not started |
