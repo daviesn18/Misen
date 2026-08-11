@@ -154,6 +154,39 @@ When Basil uses a tool, Anthropic's servers make the request to it — so it
 cannot live behind a VPN, a Tailscale-only network, or an IP allowlist. The
 other two could, if you ever wanted them to.
 
+**No proxying CDN in front of any of them.** A proxy that terminates TLS breaks
+the certificate request, and one that buffers responses breaks both SSE streams
+— Basil's replies and the MCP tool results — which surfaces as a hang rather
+than an error. If DNS ever moves to Cloudflare, these three records must be
+DNS-only, not orange-clouded.
+
+### The records for this deployment
+
+Domain `stackthelineup.com`, DNS hosted at Squarespace. Added as custom A
+records — host on the left, exactly as typed into the panel:
+
+| Host | Type | Data |
+|---|---|---|
+| `mealie.misen` | A | `64.181.237.139` |
+| `api.misen` | A | `64.181.237.139` |
+| `mcp.misen` | A | `64.181.237.139` |
+
+Giving `mealie.misen.stackthelineup.com`, `api.misen.stackthelineup.com` and
+`mcp.misen.stackthelineup.com`. The apex and `www` keep whatever Squarespace
+already serves — these three sit alongside, and nothing about the existing site
+changes.
+
+Squarespace is authoritative DNS only, with no proxy layer, so the records
+resolve straight to the host. Two things to confirm in the panel: that the
+domain's nameservers are still Squarespace's own (records added there do
+nothing if the domain is delegated elsewhere), and that no wildcard `*` record
+exists that would shadow these.
+
+Squarespace may not expose TTL on custom records. If it doesn't, a wrong value
+is expensive to walk back — cached for hours rather than minutes — so verify
+with `dig` before starting the stack rather than after, and consider the
+staging `acme_ca` line above for the first run.
+
 ---
 
 ## 3. Configure
