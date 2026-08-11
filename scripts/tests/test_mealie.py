@@ -35,10 +35,41 @@ def test_ingredient_text_survives_exactly_as_written() -> None:
     """`display` is auto-computed from quantity/unit/food unless it is set.
     Leaving it empty is how "900g (32oz) chicken breast" turns into something
     else on the way in."""
-    payload = to_mealie(a_recipe())
-    first = payload["recipeIngredient"][0]
-    assert first["note"] == "900g (32oz) chicken breast"
+    first = to_mealie(a_recipe())["recipeIngredient"][0]
     assert first["display"] == "900g (32oz) chicken breast"
+
+
+def test_ingredients_carry_the_numbers_misen_reads() -> None:
+    """The regression this whole module exists for. Misen scales by
+    multiplying `quantity` and shops by matching `food`; an earlier version
+    sent free text only, and every recipe refused to scale while every
+    generated shopping list came out empty."""
+    first = to_mealie(a_recipe())["recipeIngredient"][0]
+    assert first["quantity"] == 900
+    assert first["unit"] == "g"
+    assert first["food"] == "chicken breast"
+
+
+def test_note_is_a_qualifier_not_a_copy_of_the_line() -> None:
+    """Mealie appends `note` after the food when it composes a line, so the
+    original text there makes every scaled line read
+    "1800 g chicken breast 900g (32oz) chicken breast"."""
+    assert to_mealie(a_recipe())["recipeIngredient"][0]["note"] == ""
+
+
+def test_a_line_with_no_food_keeps_its_text_as_the_note() -> None:
+    """Otherwise the ingredient reaches Mealie with nothing to display."""
+    entry = to_mealie(a_recipe(ingredients=["Salt to taste"], sections={}))
+    ingredient = entry["recipeIngredient"][0]
+    assert ingredient["display"] == "Salt to taste"
+    assert ingredient["note"] == "Salt to taste" or ingredient.get("food")
+
+
+def test_every_ingredient_is_something_misen_can_use() -> None:
+    """A line with neither a quantity nor a food is skipped by the shopping
+    diff. One or two of those is "salt to taste"; all of them is the bug."""
+    for ingredient in to_mealie(a_recipe())["recipeIngredient"]:
+        assert ingredient.get("quantity") or ingredient.get("food")
 
 
 def test_ingredients_carry_no_shopping_list_fields() -> None:

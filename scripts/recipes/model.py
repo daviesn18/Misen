@@ -12,6 +12,8 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
+from recipes.analyse import analyse, display_unit
+
 
 @dataclass
 class Nutrition:
@@ -121,15 +123,35 @@ def to_mealie(recipe: Recipe) -> dict[str, Any]:
       chicken breast" survive as written.
     - `nutrition` is a real model with string fields, not free text.
 
-    Nothing is handed to Mealie's ingredient parser. It would resolve each line
-    to a food record and a unit record and rewrite the text to match — and a
-    library of ninety recipes with quietly altered quantities is worse than one
-    with honest strings. Mealie can still parse any recipe later from its UI,
-    one at a time, with a human looking at it.
+    Nothing is handed to Mealie's ingredient *parser* — `analyse` does that
+    work here, where it can be tested — but the quantity, unit and food it
+    finds are sent as structured fields, because Misen reads them. Scaling
+    multiplies `quantity`; the shopping-list diff matches `food` against the
+    pantry. An earlier version sent everything as free text to protect the
+    wording, and the result was recipes that would not scale and weeks that
+    produced an empty shopping list.
+
+    `display` still carries the line exactly as written, so the protection
+    that motivated the free-text version survives: nobody's "900g (32oz)
+    chicken breast" turns into something else on the way in.
     """
     ingredients = []
     for index, text in enumerate(recipe.ingredients):
-        entry: dict[str, Any] = {"note": text, "display": text, "quantity": 0}
+        parsed = analyse(text)
+        entry: dict[str, Any] = {
+            # Mealie's `note` is a qualifier — "chopped", "divided" — that it
+            # appends *after* the food when composing a line. Putting the whole
+            # original text there makes every scaled line read "1800 g chicken
+            # breast 900g (32oz) chicken breast". The original belongs in
+            # `display`, and only lines with no food need it as a note.
+            "note": "" if parsed.food else text,
+            "display": text,
+            "quantity": parsed.quantity if parsed.quantity is not None else 0,
+        }
+        if parsed.unit:
+            entry["unit"] = display_unit(parsed.unit, parsed.quantity)
+        if parsed.food:
+            entry["food"] = parsed.food
         if index in recipe.sections:
             entry["title"] = recipe.sections[index]
         ingredients.append(entry)

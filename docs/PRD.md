@@ -620,6 +620,8 @@ Each phase has a "done when" someone else could verify.
 *Done when:* recipe count matches the export, and ten spot-checked recipes have intact ingredients, steps, and images.
 **Importer built** (`scripts/`), 53 tests. Rev 1 assumed one input — a Recipe Keeper `.zip` — and the first real input was a cookbook PDF converted to markdown, so the pipeline is now parser-plus-shared-uploader rather than one script. Recipe Keeper is still to write and still waiting on the export.
 **On "images":** a converted PDF has none. The photographs are what the *text* was lost to, not an asset that came along with it. Recipes imported this way have no image and that criterion cannot be met from this input.
+**Ingredients are parsed by the importer, not by Mealie.** Quantity, unit and food are filled in by `scripts/recipes/analyse.py`; `display` keeps the line as printed. This is not an optimisation — §5's scaling multiplies `quantity` and §5's shopping diff matches `food`, so an importer that writes free text produces recipes that refuse to scale and weeks with an empty shopping list. The first version did exactly that. `companion/tests/test_imported_recipes.py` pins the contract from the reading side.
+
 **On "count matches":** it does not, and saying so is the point. Of 89 recipes in that cookbook's contents, 64 parsed and 25 exist only as photographs. Of the 64, eight came back as fragments and are marked for retyping. The importer reports all three numbers rather than importing 64 and calling it done.
 
 **Phase 3 — MCP server.** Thirteen tools with the §6 descriptions, bearer auth, calling both backends.

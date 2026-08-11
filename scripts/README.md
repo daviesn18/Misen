@@ -107,6 +107,38 @@ wrong to whoever reads the review file.
 
 ---
 
+## Why ingredients are parsed here
+
+`analyse.py` reads each line into quantity, unit and food before it goes to
+Mealie. That looks redundant — Mealie has an ingredient parser — and it is
+there because of a bug worth recording.
+
+The first version sent every ingredient as free text, `note` and `display`
+only, to stop Mealie's parser rewriting the wording. But display is not the
+only reader. **Misen scales a recipe by multiplying `quantity`, and builds a
+shopping list by matching `food` against the pantry.** With both fields empty,
+doubling a recipe changed nothing and a week of dinners produced an empty
+shopping list.
+
+The original promise still holds: `display` carries the line exactly as
+written, and Mealie is never asked to parse anything. The numbers are just
+also present, from a parser that has tests.
+
+Two details that cost real bugs:
+
+- **`note` is a qualifier**, not a copy of the line. Mealie composes a line as
+  quantity + unit + food + note, so the whole original text in `note` renders
+  as "1800 g chicken breast 900g (32oz) chicken breast".
+- **A digit welded to a percent sign is part of the food.** "2% cottage
+  cheese" read as a quantity leaves a food called "% cottage cheese".
+
+`companion/tests/test_imported_recipes.py` holds the other half of this
+contract — it reproduces the shape written here and runs it through the real
+scaler and the real shopping diff, because neither package can import the
+other.
+
+---
+
 ## Adding a source
 
 Write a module that returns `list[Recipe]` (see `model.py`) and add a
