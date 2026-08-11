@@ -15,7 +15,7 @@ rather than discovering it at step 6 with a half-built stack.
 
 **Accounts and access**
 
-- [ ] A host — see [step 0](#0-pick-a-host). Oracle Cloud accounts can take a
+- [x] A host — see [step 0](#0-pick-a-host). Oracle Cloud accounts can take a
       few hours to verify, so start that first if you're going that way
 - [ ] A domain you can add DNS records to
 - [ ] An Anthropic API key ([console.anthropic.com](https://console.anthropic.com)) —
@@ -49,6 +49,35 @@ As You Go on day one** — Always Free resources stay free under PAYG, but PAYG
 accounts are exempt from idle reclamation, and a two-person meal planner will
 sit under the 20% utilisation threshold essentially always.
 
+### The host this was deployed to
+
+Provisioned and checked against everything above.
+
+| | |
+|---|---|
+| Instance | `misen-app-server` — Oracle Cloud, US West (San Jose) |
+| Shape | `VM.Standard.A1.Flex` — 2 OCPU, 12 GB, ARM |
+| Boot volume | 50 GB |
+| Image | Oracle Linux 9 |
+| Public IP | `64.181.237.139` — reserved |
+| SSH | `opc@64.181.237.139`, key only |
+| Network | VCN `misen-vcn` (10.0.0.0/16), public subnet `misen-public-subnet` (10.0.0.0/24), internet gateway on the route table |
+| Ingress | 80, 443, 22 from `0.0.0.0/0`. No network security groups — the subnet's security list is the only control |
+| Egress | `0.0.0.0/0`, all protocols |
+| Account | Pay As You Go |
+
+Shape and boot volume both sit inside the Always Free allowance — 4 OCPU and 24
+GB across A1 instances, 200 GB of block storage — so the PAYG upgrade buys
+exemption from reclamation without turning on a bill.
+
+**Reserve the public IP before pointing DNS at it.** An ephemeral address
+survives a reboot but not a stop/start, and all three records in step 2 go stale
+the moment it changes.
+
+Port 22 is open to the world here. Oracle Linux 9 ships with password
+authentication off, so that rests entirely on the key — defensible, but if you
+ever have a static address to work from, narrowing the rule to it costs nothing.
+
 ---
 
 ## 1. Host prep
@@ -57,15 +86,45 @@ sit under the 20% utilisation threshold essentially always.
 # Docker Engine + compose plugin
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker "$USER" && newgrp docker
+```
 
-# Firewall: 80 and 443 only. Caddy is the sole public entrypoint.
+On Oracle Linux the convenience script may refuse — Oracle Linux isn't among
+the distributions it officially supports. If it bails, add Docker's CE
+repository for RHEL 9 and `dnf install docker-ce docker-compose-plugin`
+instead; the result is the same.
+
+**Firewall: 80 and 443 only.** Caddy is the sole public entrypoint. Which tool
+you use depends on the distribution, and reaching for the wrong one is the
+quickest way to a host you cannot reach.
+
+Debian and Ubuntu:
+
+```sh
 sudo ufw allow OpenSSH && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp
 sudo ufw --force enable
 ```
 
-On Oracle Cloud, `ufw` is not enough — the VCN security list also has to allow
-80 and 443 inbound, and Oracle images ship iptables rules that drop them.
-Instances are unreachable until both layers are open.
+Oracle Linux 9, RHEL, Rocky, Alma — these run firewalld, and `ufw` isn't
+packaged for them. Installing it from EPEL to follow the line above gives you
+two firewalls disagreeing with each other:
+
+```sh
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-all       # confirm http and https before moving on
+```
+
+On Oracle Cloud the host firewall is not enough on its own — the VCN security
+list also has to allow 80 and 443 inbound, and Oracle's images have shipped
+iptables rules that drop them independently of firewalld. Check that layer too:
+
+```sh
+sudo iptables -L INPUT -n --line-numbers
+```
+
+Instances are unreachable until every layer is open, and the symptom is step 4
+looping on certificate errors rather than anything that names the firewall.
 
 ---
 
@@ -337,7 +396,7 @@ and read Mealie's release notes.
 
 | Symptom | Cause |
 |---|---|
-| Caddy loops on certificate errors | DNS not resolving to this host yet, or 80/443 blocked. On Oracle, check the VCN security list *and* the instance's iptables. |
+| Caddy loops on certificate errors | DNS not resolving to this host yet, or 80/443 blocked. On Oracle, check the VCN security list *and* the host firewall — firewalld and iptables both, they can disagree. |
 | Mealie exits immediately | `DATA_DIR/mealie` not owned by `MEALIE_PUID:MEALIE_PGID`. |
 | Companion `unhealthy`, logs show `unable to open database file` | `DATA_DIR/companion` missing or not writable by uid 10001. |
 | Companion exits at boot with an Alembic traceback | A migration failed. It runs before uvicorn on purpose — the app never serves against a schema it doesn't match. Read the traceback, fix, `docker compose up -d --build companion`. |
