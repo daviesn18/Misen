@@ -227,9 +227,12 @@ staging `acme_ca` line above for the first run.
 ## 3. Configure
 
 ```sh
-git clone <this repo> misen && cd misen/deploy
+git clone -b <branch> <this repo> misen && cd misen/deploy
 cp .env.example .env
 ```
+
+**Name the branch.** `main` is a two-line stub and a default clone gets nothing
+that runs — see [`docs/HANDOFF.md`](../docs/HANDOFF.md).
 
 Fill in `.env`. The ones with no default:
 
@@ -243,13 +246,23 @@ Fill in `.env`. The ones with no default:
 | `MEALIE_API_TOKEN` | Minted in step 5, blank for now |
 | `DATA_DIR` / `BACKUP_DIR` | Absolute paths, e.g. `/srv/misen/data` |
 
-Create the data directories with ownership matching `MEALIE_PUID:MEALIE_PGID`,
-or Mealie will start and fail to write:
+Create the data directories. **The two services want different owners**, and
+giving them both to the deploying user is the mistake that costs an hour: Mealie
+runs as `MEALIE_PUID:MEALIE_PGID`, but Companion's image runs as a fixed
+non-root uid 10001, so a `companion/` directory owned by you is readable and not
+writable — the container starts, Alembic cannot create `misen.db`, and the
+service sits `unhealthy` while Caddy refuses to come up behind it.
 
 ```sh
+set -a && . ./.env && set +a          # so $DATA_DIR below is the real path
+
 mkdir -p "$DATA_DIR"/{mealie,companion,caddy/data,caddy/config} "$BACKUP_DIR"
-sudo chown -R "$(id -u):$(id -g)" "$DATA_DIR"
+sudo chown -R "$MEALIE_PUID:$MEALIE_PGID" "$DATA_DIR"
+sudo chown -R 10001:10001 "$DATA_DIR/companion"   # Companion's uid, not yours
 ```
+
+Caddy runs as root in its official image and the MCP server writes nothing at
+all, so those two need no ownership of their own.
 
 ---
 
