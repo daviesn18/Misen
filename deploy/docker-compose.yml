@@ -61,6 +61,10 @@ services:
       # to create an account by finding the URL.
       ALLOW_SIGNUP: "false"
       DEFAULT_EMAIL: ${MEALIE_DEFAULT_EMAIL:?set MEALIE_DEFAULT_EMAIL in .env}
+      # Set explicitly rather than relying on Mealie's built-in default, so the
+      # first login is a value you chose. Read only on the very first boot, when
+      # the admin row is created; changing it later does nothing.
+      DEFAULT_PASSWORD: ${MEALIE_DEFAULT_PASSWORD:?set MEALIE_DEFAULT_PASSWORD in .env}
       DEFAULT_GROUP: ${MEALIE_DEFAULT_GROUP:-misen}
       DEFAULT_HOUSEHOLD: ${MEALIE_DEFAULT_HOUSEHOLD:-home}
     deploy:
