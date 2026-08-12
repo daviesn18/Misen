@@ -256,8 +256,8 @@ service sits `unhealthy` while Caddy refuses to come up behind it.
 ```sh
 set -a && . ./.env && set +a          # so $DATA_DIR below is the real path
 
-mkdir -p "$DATA_DIR"/{mealie,companion,caddy/data,caddy/config} "$BACKUP_DIR"
-sudo chown -R "$MEALIE_PUID:$MEALIE_PGID" "$DATA_DIR"
+sudo mkdir -p "$DATA_DIR"/{mealie,companion,caddy/data,caddy/config} "$BACKUP_DIR"
+sudo chown -R "$MEALIE_PUID:$MEALIE_PGID" "$DATA_DIR" "$BACKUP_DIR"
 sudo chown -R 10001:10001 "$DATA_DIR/companion"   # Companion's uid, not yours
 ```
 
