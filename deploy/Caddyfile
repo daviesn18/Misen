@@ -38,24 +38,20 @@
 }
 
 # ---------------------------------------------------------------------------
-# Companion API — pantry, menu, scaling, shopping, Basil.
+# Companion API — pantry, menu, scaling, shopping, reminders.
 # ---------------------------------------------------------------------------
+# Every endpoint here returns ordinary buffered JSON; nothing streams, so this
+# block wants no flush_interval.
 {$API_DOMAIN} {
 	import common
 
-	reverse_proxy companion:8000 {
-		# POST /generate/chat streams Server-Sent Events. Response buffering
-		# would hold the whole reply until the turn finished, which defeats
-		# streaming entirely and looks to the user like a hang. -1 flushes
-		# immediately. Harmless for the ordinary JSON endpoints.
-		flush_interval -1
-	}
+	reverse_proxy companion:8000
 }
 
 # ---------------------------------------------------------------------------
 # MCP server. This is the one hostname that must be reachable from the public
-# internet by something other than the household: Anthropic's servers call it
-# when Basil uses a tool, so it cannot live behind a VPN or a private network.
+# internet by something other than the household: claude.ai's servers call it
+# when Claude uses a tool, so it cannot live behind a VPN or a private network.
 # ---------------------------------------------------------------------------
 {$MCP_DOMAIN} {
 	import common

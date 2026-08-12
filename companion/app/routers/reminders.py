@@ -5,9 +5,9 @@ APNs, no server-side scheduler. A once-weekly nudge does not justify a push
 certificate and a delivery pipeline.
 
 The *preference* still lives here, for two reasons. A reinstall shouldn't
-silently lose the reminder, and Basil should be able to say "I'll nudge you
-Friday" and have that be true rather than a guess about what the phone is set
-to.
+silently lose the reminder, and anything reading the household's state — the
+app, or Claude through the MCP server — should be able to say "you get nudged
+Friday" from a stored fact rather than a guess about what the phone is set to.
 """
 
 from __future__ import annotations

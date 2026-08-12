@@ -34,7 +34,6 @@ class MemberOut(BaseModel):
     initials: str
     color: str
     role: str
-    can_use_basil: bool
 
 
 class HouseholdOut(BaseModel):

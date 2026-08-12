@@ -52,22 +52,18 @@ def test_me_returns_the_calling_member(
     body = client.get("/me", headers=nick).json()
     assert body["name"] == "Nick"
     assert body["role"] == "adult"
-    assert body["can_use_basil"] is True
 
 
-def test_a_child_has_basil_switched_off(
+def test_a_child_has_the_same_access_as_an_adult(
     client: TestClient, auth: dict[str, dict[str, str]]
 ) -> None:
-    """Settled in the PRD: children get no Basil access."""
+    """`role` records who someone is, not what they may do.
+
+    It exists for display and for `cooked_by`; nothing in the API branches on
+    it. Ivy can see and plan dinner exactly as her parents can.
+    """
     body = client.get("/me", headers=auth["Ivy"]).json()
     assert body["role"] == "child"
-    assert body["can_use_basil"] is False
-
-
-def test_a_child_can_still_use_the_rest_of_the_app(
-    client: TestClient, auth: dict[str, dict[str, str]]
-) -> None:
-    """No Basil is not no access. Ivy can see and plan dinner."""
     assert client.get("/pantry", headers=auth["Ivy"]).status_code == 200
     assert client.get("/menu", headers=auth["Ivy"]).status_code == 200
 

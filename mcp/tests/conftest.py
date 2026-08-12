@@ -32,7 +32,6 @@ MEMBER = {
     "initials": "N",
     "color": "terracotta",
     "role": "adult",
-    "can_use_basil": True,
 }
 
 HOUSEHOLD = {
@@ -42,10 +41,8 @@ HOUSEHOLD = {
     "week_starts_on": "monday",
     "members": [
         MEMBER,
-        {"id": 2, "name": "Mara", "initials": "M", "color": "green", "role": "adult",
-         "can_use_basil": True},
-        {"id": 3, "name": "Ivy", "initials": "I", "color": "gold", "role": "child",
-         "can_use_basil": False},
+        {"id": 2, "name": "Mara", "initials": "M", "color": "green", "role": "adult"},
+        {"id": 3, "name": "Ivy", "initials": "I", "color": "gold", "role": "child"},
     ],
 }
 
@@ -406,7 +403,7 @@ async def _raw(token: str | None = None) -> AsyncIterator[httpx.AsyncClient]:
 
     Auth rejection is easier to assert here than through the MCP client, whose
     failures arrive wrapped in an anyio ExceptionGroup — and a raw 401 is
-    exactly what Anthropic's connector will see, so it is the more faithful
+    exactly what claude.ai's connector will see, so it is the more faithful
     assertion anyway.
     """
     async with _serve() as app:

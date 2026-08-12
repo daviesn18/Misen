@@ -1,8 +1,8 @@
 """Reminder preferences.
 
 The notification itself is scheduled on the device (PRD §9). What lives here
-is only the preference, so that a reinstall doesn't lose it and so Basil can
-say "I'll nudge you Friday" and be telling the truth.
+is only the preference, so that a reinstall doesn't lose it and so anything
+reading it can say "you get nudged Friday" and be telling the truth.
 """
 
 from __future__ import annotations

@@ -1,9 +1,12 @@
 """initial schema
 
-The whole of PRD §4 in one migration: households, members, pantry, menu, and
-the two chat tables. The chat tables have no endpoints until phase 5 — they
-land now so the schema is migrated once rather than twice, and so the
-household scoping is uniform from the first row ever written.
+The whole of PRD §4 in one migration: households, members, pantry, and menu.
+
+This migration was edited in place after the chat tables were removed, rather
+than a second migration being added to drop them. It has never been applied to
+a database — no Misen deployment existed yet — so there is nothing in the world
+whose history would have diverged. A migration whose only job was to undo the
+one directly above it would be archaeology on a schema that never shipped.
 
 Every tenant-scoped table carries household_id, and the one unique constraint
 that could span tenants (uq_menu_slot) includes it.
@@ -46,7 +49,6 @@ def upgrade() -> None:
     sa.Column('initials', sa.String(length=4), nullable=False),
     sa.Column('color', sa.String(length=20), nullable=False),
     sa.Column('role', sa.String(length=10), server_default='adult', nullable=False),
-    sa.Column('can_use_basil', sa.Boolean(), server_default='1', nullable=False),
     sa.Column('token_hash', sa.String(length=64), nullable=False),
     sa.Column('plan_reminder_day', sa.String(length=10), nullable=True),
     sa.Column('plan_reminder_hour', sa.Integer(), nullable=True),
@@ -60,40 +62,6 @@ def upgrade() -> None:
     with op.batch_alter_table('members', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_members_household_id'), ['household_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_members_token_hash'), ['token_hash'], unique=True)
-
-    op.create_table('chat_messages',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('household_id', sa.Integer(), nullable=False),
-    sa.Column('conversation_id', sa.String(length=64), nullable=False),
-    sa.Column('member_id', sa.Integer(), nullable=False),
-    sa.Column('role', sa.String(length=10), nullable=False),
-    sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.CheckConstraint("role IN ('user','assistant')", name='ck_chat_role'),
-    sa.ForeignKeyConstraint(['household_id'], ['households.id'], ),
-    sa.ForeignKeyConstraint(['member_id'], ['members.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    with op.batch_alter_table('chat_messages', schema=None) as batch_op:
-        batch_op.create_index('idx_chat_conv', ['household_id', 'conversation_id', 'created_at'], unique=False)
-
-    op.create_table('chat_usage',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('household_id', sa.Integer(), nullable=False),
-    sa.Column('conversation_id', sa.String(length=64), nullable=False),
-    sa.Column('member_id', sa.Integer(), nullable=False),
-    sa.Column('model', sa.String(length=60), nullable=False),
-    sa.Column('input_tokens', sa.Integer(), nullable=False),
-    sa.Column('output_tokens', sa.Integer(), nullable=False),
-    sa.Column('cache_read_tokens', sa.Integer(), server_default='0', nullable=False),
-    sa.Column('cache_write_tokens', sa.Integer(), server_default='0', nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['household_id'], ['households.id'], ),
-    sa.ForeignKeyConstraint(['member_id'], ['members.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    with op.batch_alter_table('chat_usage', schema=None) as batch_op:
-        batch_op.create_index('idx_chat_usage_member', ['household_id', 'member_id', 'created_at'], unique=False)
 
     op.create_table('menu_entries',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -155,14 +123,6 @@ def downgrade() -> None:
         batch_op.drop_index('idx_menu_week')
 
     op.drop_table('menu_entries')
-    with op.batch_alter_table('chat_usage', schema=None) as batch_op:
-        batch_op.drop_index('idx_chat_usage_member')
-
-    op.drop_table('chat_usage')
-    with op.batch_alter_table('chat_messages', schema=None) as batch_op:
-        batch_op.drop_index('idx_chat_conv')
-
-    op.drop_table('chat_messages')
     with op.batch_alter_table('members', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_members_token_hash'))
         batch_op.drop_index(batch_op.f('ix_members_household_id'))

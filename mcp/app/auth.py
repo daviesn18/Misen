@@ -10,14 +10,18 @@ That is a deliberate simplification of PRD §10, which described the MCP server
 as holding "its own bearer token per member". A second token per member would
 mean a second secret store, a second rotation path, and a second thing to get
 out of sync — for identical blast radius, since the tool surface covers most of
-the API anyway. In phase 5 Companion already has the member's plaintext token
-in the request it is serving, so it can pass that straight through as
-`mcp_servers[].authorization_token` without ever needing to mint anything.
+the API anyway.
 
-The practical consequence worth stating plainly: that token is handed to
-Anthropic so their servers can call this one. Rotation is `provision.py
---rotate`, and it invalidates both paths at once, which is the upside of there
-being only one.
+The practical consequence worth stating plainly: the member pastes that token
+into claude.ai when adding this server as a connector, so claude.ai's servers
+can call this one. Rotation is `provision.py --rotate`, and it invalidates the
+app and the connector at once, which is the upside of there being only one
+credential to rotate.
+
+Static bearer tokens are what this accepts today. OAuth — so a member signs in
+rather than pasting a token — is the next piece of work, and the property to
+preserve when it lands is the one above: this server verifies with Companion
+and forwards, and stores nothing itself.
 """
 
 from __future__ import annotations

@@ -7,9 +7,6 @@ passed through rather than substituted.
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 from tests.conftest import VALID_TOKEN, FakeCompanion
 
 MCP_PROBE = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
@@ -162,31 +159,3 @@ async def test_the_thirteen_tools_are_the_thirteen_in_the_prd(connect) -> None: 
         "build_shopping_list",
         "get_household",
     }
-
-
-async def test_basils_prompt_only_names_tools_that_exist(connect) -> None:  # noqa: ANN001
-    """Basil's system prompt lives in the *other* service, and names tools by hand.
-
-    Companion has no way to import this package, so nothing but this assertion
-    stands between a renamed tool and a system prompt that instructs the model
-    to call something that isn't there. The failure mode is quiet — Claude just
-    does something else — so it's worth one cross-directory read.
-    """
-    prompt_source = (
-        Path(__file__).resolve().parents[2] / "companion" / "app" / "basil.py"
-    ).read_text()
-    # Tools are referenced in the prompt as `backticked_names`.
-    referenced = {
-        name
-        for name in re.findall(r"`([A-Za-z_][A-Za-z0-9_]*)`", prompt_source)
-        if name.startswith(("get_", "set_", "add_", "clear_", "build_", "check_", "search_"))
-    }
-
-    async with connect() as client:
-        available = {tool.name for tool in await client.list_tools()}
-
-    assert referenced, "no tool names found in the prompt — did the format change?"
-    assert referenced <= available, (
-        f"Basil's prompt names tools the MCP server doesn't have: "
-        f"{sorted(referenced - available)}"
-    )

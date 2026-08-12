@@ -2,7 +2,7 @@
 
 Note what "used" means here: a timestamp, not a delete. `PATCH {"used": true}`
 sets `used_at`, the item drops out of the default view, and it stays queryable
-for a while because "we finished the salmon Tuesday" is context Basil can use
+for a while because "we finished the salmon Tuesday" is context worth having
 on Wednesday. `DELETE` is the other thing — the undo path for an item added by
 mistake — and it really does remove the row.
 """

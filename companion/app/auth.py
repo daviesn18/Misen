@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.errors import Forbidden, Unauthorized
+from app.errors import Unauthorized
 from app.models import Household, Member
 
 TOKEN_BYTES = 32
@@ -58,10 +58,9 @@ class Principal:
 def bearer_token(request: Request) -> str:
     """The raw token as presented.
 
-    Public because Basil needs it: `mcp_servers[].authorization_token` sends
-    the caller's own token to Anthropic so the MCP server can be called back
-    with the caller's exact reach. It is deliberately *not* carried on
-    `Principal` — only the one route that forwards it should have to touch it.
+    It is deliberately *not* carried on `Principal`: nothing inside Companion
+    forwards a token onward, and a credential reachable from every handler is
+    one that eventually gets logged.
     """
     header = request.headers.get("authorization", "")
     scheme, _, token = header.partition(" ")
@@ -92,14 +91,3 @@ def current_principal(
 
 CurrentPrincipal = Annotated[Principal, Depends(current_principal)]
 DbSession = Annotated[Session, Depends(get_db)]
-
-
-def require_basil(principal: CurrentPrincipal) -> Principal:
-    """Capability gate for the chat routes (phase 5).
-
-    Enforced server-side, always. The app hides the tab for members without it,
-    but hiding a button is a courtesy, not a control.
-    """
-    if not principal.member.can_use_basil:
-        raise Forbidden("Basil isn't available on this account.", code="basil_not_allowed")
-    return principal

@@ -7,12 +7,16 @@
     python scripts/provision.py --household-id 1 --member "Ivy:I:gold:child"
 
 Each `--member` is `name:initials:color[:role]`, role defaulting to `adult`.
-Children are created with Basil switched off (PRD §13, settled).
+`role` records who someone is, for display and for `cooked_by`; nothing in the
+API branches on it.
 
 **The tokens are printed once and never stored.** Only `sha256(token)` goes in
 the database, so there is no "show me the token again" — losing one means
 running `--rotate` and pasting a new one into that device. At two adults and a
 kid this is a two-minute job and does not justify a refresh-token flow.
+
+The same token is what a member pastes into claude.ai when adding the MCP
+server as a connector, so `--rotate` cuts off both the app and the connector.
 
 Run it wherever the database is:
 
@@ -112,8 +116,6 @@ def main() -> int:
                 initials=fields["initials"],
                 color=fields["color"],
                 role=fields["role"],
-                # Settled in the PRD: children get no Basil access.
-                can_use_basil=fields["role"] == "adult",
                 token_hash=hash_token(token),
             )
             db.add(member)
@@ -147,8 +149,7 @@ def report(issued: list[tuple[Member, str]]) -> None:
     print("TOKENS — copy these now. They are not stored and cannot be shown again.")
     print("=" * 72)
     for member, token in issued:
-        basil = "Basil" if member.can_use_basil else "no Basil"
-        print(f"  {member.name:<{width}}  id={member.id:<4} {member.role:<5} {basil:<8}  {token}")
+        print(f"  {member.name:<{width}}  id={member.id:<4} {member.role:<5}  {token}")
     print("=" * 72)
 
 

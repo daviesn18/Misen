@@ -72,8 +72,8 @@ services:
     networks: [misen]
 
   # ---------------------------------------------------------------------
-  # Companion — pantry, weekly menu, recipe scaling, shopping proxy,
-  # Basil chat proxy, auth. Phase 0 ships /health only.
+  # Companion — pantry, weekly menu, recipe scaling, shopping proxy, auth.
+  # Phase 0 ships /health only.
   # ---------------------------------------------------------------------
   companion:
     build:
@@ -87,18 +87,13 @@ services:
     environment:
       MISEN_DB_PATH: /data/misen.db
       MISEN_TZ: ${TZ:-America/New_York}
-      MISEN_CHAT_MODEL: ${MISEN_CHAT_MODEL:-claude-opus-5}
-      MISEN_DAILY_MESSAGE_CAP: ${MISEN_DAILY_MESSAGE_CAP:-100}
       MISEN_MEALIE_URL: http://mealie:9000
       MISEN_MEALIE_TOKEN: ${MEALIE_API_TOKEN:-}
-      # Public URL with the /mcp path, not the internal http://mcp:8001. This
-      # value is handed to Anthropic, whose servers make the connection — so it
-      # has to be the address the open internet can reach, and it has to carry
-      # the path the FastMCP app is actually mounted at.
+      # Public URL with the /mcp path, not the internal http://mcp:8001. It is
+      # the address a member pastes into claude.ai when adding the connector,
+      # so it has to be what the open internet can reach, carrying the path the
+      # FastMCP app is actually mounted at.
       MISEN_MCP_URL: https://${MCP_DOMAIN:-mcp.invalid}/mcp
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      MISEN_INSTACART_MCP_URL: ${INSTACART_MCP_URL:-}
-      MISEN_INSTACART_API_KEY: ${INSTACART_API_KEY:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
       interval: 30s
@@ -108,7 +103,7 @@ services:
     networks: [misen]
 
   # ---------------------------------------------------------------------
-  # MCP — the tool surface Basil and (later) claude.ai call.
+  # MCP — the tool surface claude.ai calls. This is how planning happens.
   # Stateless: no volumes, no database, no credentials of its own beyond the
   # Mealie token. Callers present their own member token and it is forwarded
   # to Companion, so this service can reach exactly what its caller could.

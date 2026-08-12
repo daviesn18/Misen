@@ -23,7 +23,6 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 
 from sqlalchemy import (
-    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -92,9 +91,6 @@ class Member(Base):
     color: Mapped[str] = mapped_column(String(20), nullable=False)
     role: Mapped[str] = mapped_column(
         String(10), nullable=False, default="adult", server_default="adult"
-    )
-    can_use_basil: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default="1"
     )
     # sha256 of the bearer token, hex. The token itself is printed once by
     # scripts/provision.py and never stored anywhere.
@@ -182,49 +178,3 @@ class MenuEntry(Base):
         CheckConstraint("servings IS NULL OR servings > 0", name="ck_menu_servings_positive"),
         Index("idx_menu_week", "household_id", "week_start"),
     )
-
-
-class ChatMessage(Base):
-    """Basil's transcript. No endpoints until phase 5 — the table lands now so
-    the schema is migrated once rather than twice."""
-
-    __tablename__ = "chat_messages"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    household_id: Mapped[int] = mapped_column(ForeignKey("households.id"), nullable=False)
-    conversation_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    member_id: Mapped[int] = mapped_column(ForeignKey("members.id"), nullable=False)
-    role: Mapped[str] = mapped_column(String(10), nullable=False)
-    # The full content block array as JSON, not just the text. Tool use and
-    # tool results are content blocks; a transcript that drops them cannot be
-    # replayed to the API on the next turn.
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
-
-    __table_args__ = (
-        CheckConstraint("role IN ('user','assistant')", name="ck_chat_role"),
-        Index("idx_chat_conv", "household_id", "conversation_id", "created_at"),
-    )
-
-
-class ChatUsage(Base):
-    """One row per Basil turn, so "is this expensive?" is a query."""
-
-    __tablename__ = "chat_usage"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    household_id: Mapped[int] = mapped_column(ForeignKey("households.id"), nullable=False)
-    conversation_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    member_id: Mapped[int] = mapped_column(ForeignKey("members.id"), nullable=False)
-    model: Mapped[str] = mapped_column(String(60), nullable=False)
-    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
-    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
-    cache_read_tokens: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
-    cache_write_tokens: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
-
-    __table_args__ = (Index("idx_chat_usage_member", "household_id", "member_id", "created_at"),)

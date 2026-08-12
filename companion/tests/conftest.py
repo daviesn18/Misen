@@ -27,23 +27,11 @@ import pytest
 _TMP = tempfile.mkdtemp(prefix="misen-tests-")
 os.environ["MISEN_DB_PATH"] = str(Path(_TMP) / "test.db")
 
-# Basil's configuration, forced rather than defaulted. Overwriting
-# ANTHROPIC_API_KEY matters: a developer with a real key in their shell would
-# otherwise run a suite that could bill them if any fake were ever incomplete.
-os.environ["ANTHROPIC_API_KEY"] = "test-key-not-a-real-one"
 os.environ["MISEN_MCP_URL"] = "https://mcp.misen.test/mcp"
-os.environ["MISEN_INSTACART_MCP_URL"] = ""
-os.environ["MISEN_INSTACART_API_KEY"] = ""
 
-from anthropic.lib.streaming import BetaTextEvent  # noqa: E402
-from anthropic.lib.streaming._beta_types import (  # noqa: E402
-    ParsedBetaContentBlockStopEvent,
-)
-from anthropic.types.beta import BetaMessage, BetaRawContentBlockStartEvent  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
-from app.anthropic_client import get_anthropic  # noqa: E402
 from app.auth import generate_token, hash_token  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.db import Base, SessionLocal, engine  # noqa: E402
@@ -183,141 +171,12 @@ class FakeMealie:
         del self.items[item_id]
 
 
-# --- an Anthropic that isn't there -----------------------------------------
-#
-# Scripted, but built out of the SDK's *real* event and message classes. A fake
-# made of plain dicts would happily accept a field name the API doesn't have,
-# and the first time anyone found out would be in production with a live key.
-
-
-def turn(
-    text: str = "Sure.",
-    *,
-    tools: list[str] | None = None,
-    stop_reason: str = "end_turn",
-    input_tokens: int = 100,
-    output_tokens: int = 20,
-    cache_read: int = 0,
-    cache_write: int = 0,
-    tool_error: bool = False,
-) -> dict[str, Any]:
-    """One API response: the events it streams and the message it settles into."""
-    events: list[Any] = []
-    blocks: list[dict[str, Any]] = []
-
-    for index, name in enumerate(tools or []):
-        use_id = f"mcptoolu_{index}"
-        block = {
-            "type": "mcp_tool_use",
-            "id": use_id,
-            "name": name,
-            "server_name": "misen",
-            "input": {},
-        }
-        result = {
-            "type": "mcp_tool_result",
-            "tool_use_id": use_id,
-            "is_error": tool_error,
-            "content": [{"type": "text", "text": "{}"}],
-        }
-        events.append(
-            BetaRawContentBlockStartEvent.model_validate(
-                {"type": "content_block_start", "index": len(blocks), "content_block": block}
-            )
-        )
-        events.append(
-            ParsedBetaContentBlockStopEvent.model_validate(
-                {"type": "content_block_stop", "index": len(blocks) + 1, "content_block": result}
-            )
-        )
-        blocks += [block, result]
-
-    if text:
-        events.append(BetaTextEvent(type="text", text=text, snapshot=text))
-        blocks.append({"type": "text", "text": text})
-
-    message = BetaMessage.model_validate(
-        {
-            "id": f"msg_{len(blocks)}",
-            "type": "message",
-            "role": "assistant",
-            "model": "claude-opus-5",
-            "content": blocks,
-            "stop_reason": stop_reason,
-            "stop_sequence": None,
-            "usage": {
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "cache_read_input_tokens": cache_read,
-                "cache_creation_input_tokens": cache_write,
-            },
-        }
-    )
-    return {"events": events, "message": message}
-
-
-class _FakeStream:
-    def __init__(self, scripted: dict[str, Any]) -> None:
-        self._scripted = scripted
-
-    async def __aenter__(self) -> _FakeStream:
-        return self
-
-    async def __aexit__(self, *_: Any) -> bool:
-        return False
-
-    async def __aiter__(self):  # noqa: ANN201
-        for event in self._scripted["events"]:
-            yield event
-
-    async def get_final_message(self) -> BetaMessage:
-        return self._scripted["message"]
-
-
-class _FakeMessages:
-    def __init__(self, owner: FakeAnthropic) -> None:
-        self._owner = owner
-
-    def stream(self, **kwargs: Any) -> _FakeStream:
-        if self._owner.error is not None:
-            raise self._owner.error
-        self._owner.calls.append(kwargs)
-        if not self._owner.script:
-            raise AssertionError("Basil made more API calls than the test scripted")
-        return _FakeStream(self._owner.script.pop(0))
-
-
-class _FakeBeta:
-    def __init__(self, owner: FakeAnthropic) -> None:
-        self.messages = _FakeMessages(owner)
-
-
-class FakeAnthropic:
-    """Stands in for AsyncAnthropic. Records every request it is handed."""
-
-    def __init__(self, script: list[dict[str, Any]] | None = None) -> None:
-        self.script: list[dict[str, Any]] = script if script is not None else [turn()]
-        self.calls: list[dict[str, Any]] = []
-        self.error: Exception | None = None
-        self.beta = _FakeBeta(self)
-
-    @property
-    def last(self) -> dict[str, Any]:
-        return self.calls[-1]
-
-
-@pytest.fixture
-def basil() -> FakeAnthropic:
-    return FakeAnthropic()
-
-
 @pytest.fixture
 def settings():  # noqa: ANN201
     """The live settings singleton, with any mutation undone afterwards.
 
-    `get_settings` is cached, so a test that flips `anthropic_api_key` to test
-    the unconfigured path would otherwise leave Basil switched off for every
-    test that ran after it.
+    `get_settings` is cached, so a test that mutates a setting to exercise some
+    path would otherwise leave that value in place for every test after it.
     """
     current = get_settings()
     before = current.model_dump()
@@ -352,9 +211,8 @@ def mealie() -> FakeMealie:
 
 
 @pytest.fixture
-def client(mealie: FakeMealie, basil: FakeAnthropic) -> Iterator[TestClient]:
+def client(mealie: FakeMealie) -> Iterator[TestClient]:
     app.dependency_overrides[get_mealie] = lambda: mealie
-    app.dependency_overrides[get_anthropic] = lambda: basil
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
@@ -378,7 +236,6 @@ def _make_household(db: Session, name: str, members: list[tuple[str, str]]) -> d
             initials=member_name[0],
             color="terracotta",
             role=role,
-            can_use_basil=role == "adult",
             token_hash=hash_token(token),
         )
         db.add(member)
@@ -394,8 +251,8 @@ def _make_household(db: Session, name: str, members: list[tuple[str, str]]) -> d
 def households(db: Session) -> dict[str, Any]:
     """Two households, and a child in the first.
 
-    Nick and Mara live together. Ivy is their kid, so `can_use_basil` is off.
-    Sam lives somewhere else entirely and must never see any of their data.
+    Nick and Mara live together, and Ivy is their kid. Sam lives somewhere else
+    entirely and must never see any of their data.
     """
     first = _make_household(db, "Davies", [("Nick", "adult"), ("Mara", "adult"), ("Ivy", "child")])
     second = _make_household(db, "Elsewhere", [("Sam", "adult")])

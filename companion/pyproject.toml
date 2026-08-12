@@ -1,7 +1,7 @@
 [project]
 name = "misen-companion"
 version = "0.1.0"
-description = "Misen Companion API — pantry, weekly menu, recipe scaling, shopping proxy, Basil chat proxy"
+description = "Misen Companion API — pantry, weekly menu, recipe scaling, shopping proxy"
 requires-python = ">=3.11"
 
 # Each phase adds what it actually needs rather than carrying unused pins.
@@ -12,10 +12,6 @@ dependencies = [
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "httpx>=0.27",
-    # The MCP connector shapes Basil depends on (mcp_toolset in `tools`,
-    # the mcp-client-2025-11-20 beta) need a recent SDK; the previous
-    # connector version put tool configuration somewhere else entirely.
-    "anthropic>=0.121",
 ]
 
 [project.optional-dependencies]

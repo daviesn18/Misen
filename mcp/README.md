@@ -1,6 +1,9 @@
 # MCP server
 
-The thirteen tools Basil calls. [PRD §6](../docs/PRD.md) is the spec.
+The thirteen tools Claude calls. [PRD §6](../docs/PRD.md) is the spec.
+
+This is Misen's only assistant surface: planning happens in a Claude Project on
+claude.ai with this server attached as a connector. There is no in-app chat.
 
 FastMCP over streamable HTTP. It calls Companion and Mealie internally; a model
 never sees the seam.
@@ -78,7 +81,11 @@ Two things about the test setup that will otherwise cost an afternoon:
 
 ## Deployment
 
-Public reachability is not optional for this service. When Basil uses a tool,
-**Anthropic's servers make the request to `mcp.misen.<domain>`** — so unlike
+Public reachability is not optional for this service. When Claude uses a tool,
+**claude.ai's servers make the request to `mcp.misen.<domain>`** — so unlike
 Companion, it cannot sit behind a VPN or a private network. That is the single
 constraint that decides where Misen can be hosted.
+
+It also now carries more weight than it used to. With planning moved to a
+Claude Project, this hostname being unreachable does not degrade one feature —
+it is the difference between Claude being able to see Misen and not.

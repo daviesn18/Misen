@@ -1,7 +1,7 @@
 [project]
 name = "misen-mcp"
 version = "0.1.0"
-description = "Misen MCP server — the tool surface Basil calls"
+description = "Misen MCP server — the tool surface Claude calls"
 requires-python = ">=3.11"
 
 dependencies = [

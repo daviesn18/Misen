@@ -9,8 +9,8 @@ deliberately, not incidentally.
 What is deliberately absent: no `delete_recipe`, no `delete_pantry_item`, no
 household or member mutation. Destructive and administrative operations stay in
 the app and in `scripts/`, where a human is looking at a confirmation dialog.
-Basil can mark things used, overwrite a menu slot after confirming, and clear a
-slot on explicit request; it cannot erase a recipe or change who lives here.
+Claude can mark things used, overwrite a menu slot after confirming, and clear
+a slot on explicit request; it cannot erase a recipe or change who lives here.
 
 There is no `household_id` parameter on any tool, also deliberately: a model
 that could name a household could name the wrong one. Scope comes from the
@@ -434,6 +434,6 @@ def build_app():  # noqa: ANN201 — Starlette app, typed by FastMCP
     Stateless: every request stands alone rather than resuming a session held
     in this process's memory. That keeps a restart from stranding an
     in-progress conversation, which matters because the client here is
-    Anthropic's connector rather than something that will notice and retry.
+    claude.ai's connector rather than something that will notice and retry.
     """
     return mcp.http_app(path="/mcp", stateless_http=True)
