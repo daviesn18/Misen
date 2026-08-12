@@ -26,6 +26,9 @@ Two backends behind one reverse proxy — [Mealie](https://mealie.io) for recipe
 
 ## Status
 
+**Picking this up cold? Start with [`docs/HANDOFF.md`](docs/HANDOFF.md)** — what
+is done, what is next, and the branch topology, which is not what you'd expect.
+
 | Phase | |
 |---|---|
 | 0 — Infrastructure | code complete, awaiting a host — see [`deploy/README.md`](deploy/README.md) |
