@@ -1,8 +1,12 @@
 # Misen — Product Requirements
 
-> **Product:** Misen · **In-app assistant:** Basil · *"A warm kitchen, in its place."*
+> **Product:** Misen · **Assistant:** Claude, in a Claude Project · *"A warm kitchen, in its place."*
 >
-> Status: approved for build. Last updated 2026-08-10 (rev 2).
+> Status: approved for build. Last updated 2026-08-12 (rev 3).
+>
+> **Rev 3 replaces Basil with a Claude Project.** The in-app chat assistant and
+> its Anthropic API proxy are gone; planning happens on claude.ai against the
+> same MCP server. Decision 7 records the reasoning.
 
 ---
 
@@ -10,7 +14,7 @@
 
 Two people cook dinner most nights and are bad at deciding what. The recipes live in Recipe Keeper, the pantry lives in someone's head, the shopping list lives on a phone notepad, and the weekly plan doesn't exist — so Tuesday at 6pm is a negotiation, and half the fresh food bought on Sunday gets thrown out on Friday.
 
-Misen puts those four things in one place and adds an assistant that can act on all of them. Five peer sections:
+Misen puts those four things in one place and exposes all of them to an assistant that can act on them. Four peer sections:
 
 | Section | Job |
 |---|---|
@@ -18,15 +22,30 @@ Misen puts those four things in one place and adds an assistant that can act on 
 | **Recipes** | The library. Browse, search, add three ways, scale to any number of servings. |
 | **Pantry** | What's on hand across fridge / pantry / freezer, with expiry nudges. |
 | **Shopping** | The list, grouped by aisle, checked off in the store. |
-| **Basil** | Chat. Plans the week, answers "what can I make tonight", carts the missing groceries. |
 
-The bet is that the assistant is the reason the other four stay current. Nobody maintains a digital pantry for its own sake; people maintain it when saying "we used the chicken" out loud is the whole interaction and something useful happens as a result.
+**The assistant is not one of them.** Planning conversations happen in a Claude
+Project on claude.ai, which reaches all four through Misen's MCP server: it
+reads the recipes and the pantry, writes the menu, and builds the shopping
+list. Misen itself never calls a model.
+
+The bet is unchanged — the assistant is the reason the other four stay current.
+Nobody maintains a digital pantry for its own sake; people maintain it when
+saying "we used the chicken" out loud is the whole interaction and something
+useful happens as a result. What rev 3 changes is where that sentence gets
+said: in Claude, not in a fifth tab.
+
+The cost, stated plainly: planning means switching apps, and on a phone that is
+a real difference. What it buys is no API key, no per-message billing, no chat
+UI to build, and a far more capable assistant than a 16k-token proxy would have
+been.
 
 ### Users
 
-One household at launch — two adults, both trusted equally, sharing menu, pantry, and shopping list, with separate Basil conversation histories. But the data model is multi-household and multi-member from the first migration (decision 9), so adding kids is a row insert and adding a second household is a configuration change rather than a rewrite.
+One household at launch — two adults, both trusted equally, sharing menu, pantry, and shopping list. Conversation history is per person, held by claude.ai rather than by Misen. But the data model is multi-household and multi-member from the first migration (decision 9), so adding kids is a row insert and adding a second household is a configuration change rather than a rewrite.
 
-Members carry a `role` of `adult` or `child`. Children get the app, can see everything, can check off shopping items and mark pantry items used — the chores — but can't delete recipes, can't clear a planned night, and **have no Basil access at all**. That last one is a cost control as much as a policy: a chat endpoint that spends real money per message shouldn't be handed out casually. `can_use_basil` is a plain boolean, defaulting true for adults and false for children; there is no per-child allowance and no partial access.
+Members carry a `role` of `adult` or `child`. It records who someone is — for display, and for `cooked_by` — and the app uses it to decide what to put in front of a kid. **Nothing in the API branches on it.**
+
+Rev 2 had a `can_use_basil` boolean here, off for children, justified as cost control over a paid endpoint. With no paid endpoint there is nothing to control: assistant access is now a claude.ai account, granted or not granted outside Misen entirely. The column is gone.
 
 ### Platforms
 
@@ -53,23 +72,23 @@ One full week planned, shopped, and cooked using only Misen, with no fallback to
 
 ## 2. Decisions
 
-Rows marked **assumed** were my recommendation on an unanswered question. Decisions 9–13 are new in rev 2.
+Rows marked **assumed** were my recommendation on an unanswered question. Decisions 9–13 are new in rev 2. Decisions 2, 6, and 7 were revised in rev 3, when Basil was replaced by a Claude Project; the original reasoning is kept rather than overwritten, because what changed was a premise, not a mistake.
 
 | # | Decision | Choice | Why |
 |---|---|---|---|
 | 1 | Recipe backend | **Mealie** | URL scraping, image/AI import, image hosting, shopping list — the bulk of the boring work, already built. Cost: a second service to operate and an API shape we don't control. |
-| 2 | Instacart | **Cut the in-app button.** Shopping list gets a full API + MCP tools so Basil can do it. | The design's "Order missing on Instacart" button and the plan's "no Instacart integration needed" contradicted each other. Resolution: no Instacart code anywhere in v1, but the list is fully readable and writable by Basil, which already has the connector. Ordering is a conversation, not a button. |
+| 2 | Instacart | **Cut the in-app button.** Shopping list gets a full API + MCP tools so an assistant can do it. | The design's "Order missing on Instacart" button and the plan's "no Instacart integration needed" contradicted each other. Resolution: no Instacart code anywhere in v1, but the list is fully readable and writable through the tools. Ordering is a conversation, not a button. **Rev 3:** Instacart's own MCP server is added to the Claude Project as a second connector, so the credential lives in a claude.ai account rather than in Misen's `.env` — which is closer to the original intent than proxying was. |
 | 3 | Hosting | **One small VPS, Docker Compose, Caddy** | ~$6/mo, real domain, automatic HTTPS, reachable from anywhere including claude.ai later. |
 | 4 | Offline | **SwiftData cache + optimistic writes**, queued sync, last-write-wins | The Shopping tab's entire job happens in a grocery store with bad signal. Largest single chunk of client work in the project and worth it. |
 | 5 | Pantry precision | **assumed** — presence + free-text quantity + optional expiry. Nothing auto-decrements. | Structured quantities with auto-decrement need unit normalization ("1 onion" vs "150g onion") and drift from reality within days. Free text is what people actually maintain, and it's enough to answer "what can I make tonight". |
-| 6 | Auth | **assumed** — one bearer token per member, in Keychain | Static tokens separate Basil threads, protect a paid endpoint, need zero login UI. Rotation means re-pasting; fine at household scale. |
-| 7 | MCP access | **assumed** — bearer auth, in-app Basil first; OAuth for claude.ai deferred | Getting Basil working beats getting a second front door. Adding OAuth later doesn't change the tools. |
+| 6 | Auth | **assumed** — one bearer token per member, in Keychain | Static tokens identify a member, scope every request to a household, and need zero login UI. Rotation means re-pasting; fine at household scale. **Rev 3:** the same token is pasted into claude.ai to authenticate the connector, so one credential covers both the app and the assistant and `--rotate` revokes both at once. |
+| 7 | MCP access | **Revised in rev 3 — claude.ai is the only front door.** Bearer auth today; OAuth is the next work item. | Rev 2 read: *"bearer auth, in-app Basil first; OAuth for claude.ai deferred. Getting Basil working beats getting a second front door. Adding OAuth later doesn't change the tools."* That last clause is what made this reversible, and it held — the thirteen tools were built against Basil and needed no change to serve a Claude Project. What changed is that the second front door turned out to be the better one: it costs no API key, no chat UI, and no per-message billing, and Claude in a Project is more capable than the proxy would have been. Bearer tokens still work; OAuth removes the paste. |
 | 8 | Repo & build order | **assumed** — monorepo, backend first | Backend and MCP can be built *and tested* in a Linux container; iOS can't be compiled without Xcode. Verify the API first, then write the app against something known-good. |
 | 9 | Multi-household | **Tenant key from the first migration.** No switcher UI in v1. | Retrofitting `household_id` onto a live database means touching every table, every query, every index, and every MCP tool — with real data in flight. Adding it now costs one column and a `WHERE` clause per query. This is the single highest-return change in rev 2. |
 | 10 | iPad | **Two-column `NavigationSplitView` + Cook Mode** | The iPad is the counter device. A stretched iPhone layout wastes it, and Cook Mode is the feature that makes the app useful *during* cooking rather than only before it. |
 | 11 | Recipe scaling | **Client-side multiplier on parsed quantities, honest degradation on unparsed ones** | Mealie parses ingredients into `quantity / unit / food / note` when it can and leaves free text when it can't. Scaling multiplies the parsed number and leaves unparsed lines alone with a visible marker. No unit math, no pluralization. |
 | 12 | Notifications | **assumed** — local notifications, scheduled on-device, no APNs | A weekly "plan next week" reminder does not justify an Apple push certificate, a device-token registry, and a server-side scheduler. Local notifications get 95% of the value for ~2% of the work. The 5% lost is smart cancellation when offline — see §9. |
-| 13 | Freeform meals | **A menu slot can hold a recipe reference *or* a plain title** | Nachos does not need a recipe. Forcing every planned night through the recipe library is the kind of rigidity that makes people stop planning. Freeform meals contribute nothing to the shopping list, and Basil is told to ask about them. |
+| 13 | Freeform meals | **A menu slot can hold a recipe reference *or* a plain title** | Nachos does not need a recipe. Forcing every planned night through the recipe library is the kind of rigidity that makes people stop planning. Freeform meals contribute nothing to the shopping list, and `build_shopping_list` returns them in `freeform_entries` so the caller can ask about them. |
 
 ### Repo layout
 
@@ -114,7 +133,9 @@ Rows marked **assumed** were my recommendation on an unanswered question. Decisi
 
 **The app talks to two APIs, not one.** Mealie directly for recipe reads and imports; Companion for everything else. The one exception is the shopping list — it lives in Mealie but is proxied through Companion so check-off state, aisle grouping, and the MCP tools have a single implementation.
 
-**The MCP server is the only thing Claude talks to.** It fans out to both backends internally, so a model sees one coherent tool surface — and Basil-in-the-app and a future Claude Project get identical capabilities for free.
+**The MCP server is the only thing Claude talks to.** It fans out to both backends internally, so a model sees one coherent tool surface. Rev 2 valued this because "Basil-in-the-app and a future Claude Project get identical capabilities for free" — rev 3 collects on exactly that: dropping Basil cost the tool surface nothing, because it was never built for Basil specifically.
+
+It also makes `mcp.` the load-bearing hostname. It is no longer one feature's dependency; it is the whole assistant.
 
 **Recipes stay in Mealie, always.** `menu_entries` holds a reference, never a copy.
 
@@ -157,7 +178,6 @@ CREATE TABLE members (
     initials            TEXT NOT NULL,        -- 'N', 'M'
     color               TEXT NOT NULL,        -- 'terracotta' | 'green' | 'gold' | 'plum'
     role                TEXT NOT NULL DEFAULT 'adult' CHECK (role IN ('adult','child')),
-    can_use_basil       BOOLEAN NOT NULL DEFAULT 1,
     token_hash          TEXT NOT NULL UNIQUE, -- sha256 of the bearer token; never the token
     plan_reminder_day   TEXT,                 -- 'friday' | 'saturday' | NULL = off
     plan_reminder_hour  INTEGER,              -- 0–23, household-local
@@ -201,29 +221,6 @@ CREATE TABLE menu_entries (
 );
 CREATE INDEX idx_menu_week ON menu_entries(household_id, week_start);
 
-CREATE TABLE chat_messages (
-    id               INTEGER PRIMARY KEY,
-    household_id     INTEGER NOT NULL REFERENCES households(id),
-    conversation_id  TEXT NOT NULL,
-    member_id        INTEGER NOT NULL REFERENCES members(id),
-    role             TEXT NOT NULL CHECK (role IN ('user','assistant')),
-    content          TEXT NOT NULL,           -- JSON: full content block array, not just text
-    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_chat_conv ON chat_messages(household_id, conversation_id, created_at);
-
-CREATE TABLE chat_usage (
-    id                  INTEGER PRIMARY KEY,
-    household_id        INTEGER NOT NULL REFERENCES households(id),
-    conversation_id     TEXT NOT NULL,
-    member_id           INTEGER NOT NULL REFERENCES members(id),
-    model               TEXT NOT NULL,
-    input_tokens        INTEGER NOT NULL,
-    output_tokens       INTEGER NOT NULL,
-    cache_read_tokens   INTEGER NOT NULL DEFAULT 0,
-    cache_write_tokens  INTEGER NOT NULL DEFAULT 0,
-    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
 ```
 
 ### Notes on the schema
@@ -240,17 +237,15 @@ CREATE TABLE chat_usage (
 
 **`used_at` is a soft state, not a delete.** "We finished the salmon Tuesday" is useful context on Wednesday. Used items are hidden from the default Pantry view, purged after 30 days by a job, and stay visible to `get_pantry_items(include_used=true)`.
 
-**`chat_messages.content` stores the full content block array as JSON.** Tool use and tool results are content blocks; a conversation that drops them can't be replayed to the API on the next turn.
-
-**`chat_usage` exists so the spend is visible.** One insert per turn, and it turns "is Basil expensive?" from a guess into a query.
+**There are no chat tables.** Rev 2 had `chat_messages` and `chat_usage` here, to hold Basil's transcript and per-turn token spend. With planning in a Claude Project, the transcript lives in claude.ai and there is no spend to record. Both were dropped in rev 3 by editing the initial migration in place — it had never been applied to a database, so nothing's history diverged.
 
 **`mealie_shopping_list_id` was added during phase 1.** Mealie supports many shopping lists per household; Misen has exactly one and has to find the same one on every call. Matching by name looked simpler until you notice that renaming the list in Mealie's UI would strand it and silently start a second. The id is resolved once, cached here, and re-resolved if it ever points at nothing.
 
 **Timestamps are naive UTC.** SQLite has no timezone type, so a column that accepts an aware datetime silently drops the offset on write. One clock (`utcnow()`), one meaning, and conversion to household-local time happens at the edge from `households.timezone`.
 
-**Reminder preferences live server-side even though scheduling is local.** Two columns, and it means a reinstall doesn't silently lose the reminder and Basil can say "I'll nudge you Friday" and be telling the truth.
+**Reminder preferences live server-side even though scheduling is local.** Two columns, and it means a reinstall doesn't silently lose the reminder and anything reading the household — the app, or Claude through `get_household` — can say "you get nudged Friday" from a stored fact rather than a guess.
 
-**Dropped from rev 1:** `generation_sessions` (its job is done better by `chat_messages`, which contains the actual reasoning) and `sync_log` (last-write-wins with `updated_at` / `updated_by` on the rows is sufficient — see §8).
+**Dropped from rev 1:** `generation_sessions` and `sync_log` (last-write-wins with `updated_at` / `updated_by` on the rows is sufficient — see §8). Rev 2 kept `generation_sessions` out on the grounds that `chat_messages` did its job better; rev 3 drops that table too, so neither exists and the reasoning behind a plan lives wherever the conversation does.
 
 ---
 
@@ -278,9 +273,6 @@ All endpoints require `Authorization: Bearer <member token>`. The token resolves
 | `POST` | `/shopping/from-menu` | Build the list from a week's recipes at planned servings, diffed against pantry | `build_shopping_list` |
 | `GET` | `/reminders` | This member's reminder preference | — |
 | `PUT` | `/reminders` | Set day + hour, or `null` to disable | — |
-| `POST` | `/generate/chat` | SSE stream. Basil. `403` if `can_use_basil` is false. | — |
-| `GET` | `/generate/conversations` | This member's threads | — |
-| `GET` | `/generate/conversations/{id}` | One thread's messages | — |
 
 Two MCP tools have no row here on purpose. `search_recipes` goes straight from the MCP server to Mealie — proxying search would mean re-implementing pagination and tag filtering for no gain, and the app calls Mealie directly for the same reason. `get_recipe` maps to `/recipes/{slug}/scaled` because scaling is the one recipe operation Companion owns.
 
@@ -311,10 +303,10 @@ Mealie owns shopping list storage. Companion proxies it so check-off, aisle grou
 
 Two deliberate limitations, both surfaced in the UI rather than hidden:
 
-- **The pantry diff is dumb** — case-insensitive substring match on name. It will miss "scallions" vs "green onions" and will occasionally suggest buying something you have. That's the right amount of engineering: the list is a starting point a human edits in the store, and Basil can be asked to sanity-check it, which is a better use of a model than a Levenshtein threshold.
-- **Freeform entries contribute nothing.** "Nachos" has no ingredients, so the generated list has a gap. The response returns `freeform_entries: ["Nachos"]` so the app can say "3 nights are freeform — add anything you need for those" and Basil can ask directly.
+- **The pantry diff is dumb** — case-insensitive substring match on name. It will miss "scallions" vs "green onions" and will occasionally suggest buying something you have. That's the right amount of engineering: the list is a starting point a human edits in the store, and Claude can be asked to sanity-check it, which is a better use of a model than a Levenshtein threshold.
+- **Freeform entries contribute nothing.** "Nachos" has no ingredients, so the generated list has a gap. The response returns `freeform_entries: ["Nachos"]` so the app can say "3 nights are freeform — add anything you need for those" and Claude can ask directly.
 
-**Rebuilding is safe.** "Generate the list" is a button someone presses more than once as a week fills in, and Basil's own tool description tells it to call `build_shopping_list` after finishing a plan. Anything already on the list comes back in `already_listed` instead of being added a second time — Mealie merges duplicate *food* items but not the free-text ones Misen writes, so without this the second press silently doubles the list. Explicit `POST /shopping` is not deduplicated: if someone asks for two of a thing, they get two.
+**Rebuilding is safe.** "Generate the list" is a button someone presses more than once as a week fills in, and `build_shopping_list`'s own tool description tells the model to call it after finishing a plan. Anything already on the list comes back in `already_listed` instead of being added a second time — Mealie merges duplicate *food* items but not the free-text ones Misen writes, so without this the second press silently doubles the list. Explicit `POST /shopping` is not deduplicated: if someone asks for two of a thing, they get two.
 
 **Ingredient lines that are instructions don't become items.** A line with neither a parsed food nor a quantity — "salt to taste", "freshly ground pepper" — is guidance to the cook, and a shopping list cluttered with them is one people stop reading. A line with a food but no quantity ("olive oil") is a real item and stays.
 
@@ -322,7 +314,7 @@ The response also carries `unavailable_recipes`: a recipe deleted in Mealie afte
 
 ### Errors
 
-Standard HTTP codes with `{"error": {"code": "...", "message": "..."}}`. The client surfaces `message` directly, so keep it human-readable. `502` specifically means "Mealie is unreachable" and the client says so — the two backends fail independently and the user should know which half is down. `403` on a capability failure (a child hitting Basil) returns a friendly message, not a raw permission error.
+Standard HTTP codes with `{"error": {"code": "...", "message": "..."}}`. The client surfaces `message` directly, so keep it human-readable. `502` specifically means "Mealie is unreachable" and the client says so — the two backends fail independently and the user should know which half is down.
 
 ---
 
@@ -350,7 +342,9 @@ One FastMCP server over HTTP, bearer auth. Thirteen tools. It calls Mealie and C
 
 ### What is deliberately absent
 
-No `delete_recipe`, no `delete_pantry_item`, no household or member mutation. Destructive and administrative operations stay in the app or in `scripts/`, where a human is looking at a confirmation dialog. Basil can mark things used, overwrite a menu slot after confirming, and clear a slot on explicit request; it cannot erase a recipe or change who lives here.
+No `delete_recipe`, no `delete_pantry_item`, no household or member mutation. Destructive and administrative operations stay in the app or in `scripts/`, where a human is looking at a confirmation dialog. Claude can mark things used, overwrite a menu slot after confirming, and clear a slot on explicit request; it cannot erase a recipe or change who lives here.
+
+That boundary matters more in rev 3 than it did in rev 2. Under Basil the tool surface was reachable only through a prompt Misen wrote; now it is reachable from a Claude Project, where the instructions are whatever the member typed. The tools are the control, and they always were — this is why they were specced as the control rather than the prompt.
 
 ### Tenancy in MCP
 
@@ -360,116 +354,100 @@ This settles §10's "the MCP server holds its own bearer token per member" the s
 
 ---
 
-## 7. Basil
+## 7. The Claude Project
 
-### The chat proxy
-
-The Anthropic API key lives server-side and never ships in the app binary. An extracted key from a TestFlight build is a real risk even at household scale, and there is no upside to taking it.
-
-```
-Misen  ──POST /generate/chat──►  Companion  ──►  Anthropic Messages API
-  member token   SSE stream back   API key       + mcp_servers → MCP server
-                                                    ↑
-                                     Claude calls tools mid-conversation:
-                                     reads pantry, writes the menu
-```
-
-**The request shape.** The source plan says to call the Messages API "with `mcp_servers` set to your MCP server's URL". That alone is rejected as a validation error — the MCP connector needs three things together:
-
-```python
-stream = client.beta.messages.stream(
-    model=settings.chat_model,                       # default "claude-opus-5"
-    max_tokens=16000,
-    betas=["mcp-client-2025-11-20"],                 # 1. the beta flag
-    mcp_servers=[{                                   # 2. the server declaration
-        "type": "url",
-        "name": "misen",
-        "url": settings.mcp_url,
-        "authorization_token": member_mcp_token,
-    }],
-    tools=[{                                         # 3. the referencing toolset
-        "type": "mcp_toolset",
-        "mcp_server_name": "misen",
-    }],
-    system=[{"type": "text", "text": SYSTEM_PROMPT,
-             "cache_control": {"type": "ephemeral"}}],
-    messages=history,
-)
-```
-
-`mcp_server_name` must match the `name` in `mcp_servers`; every declared server needs exactly one referencing toolset, or the request 400s.
-
-**Streaming is required, not a nicety.** At `max_tokens=16000` a non-streaming request risks an SDK HTTP timeout. Use `.stream()` and `.get_final_message()`. It also produces the typing feel the design implies, so there is no version of this where we don't stream.
-
-**`pause_turn` is the normal path, not an edge case.** *(Added in phase 5 — this was missing from rev 1 and it is the single most load-bearing detail in the whole section.)* Anthropic runs the tool loop server-side and stops it after ten tool calls, handing the turn back with `stop_reason: "pause_turn"` and no reply. "Plan my dinners for the week" is `get_weekly_menu` + `get_pantry_items` + a few searches + seven `set_weekly_menu` calls + `build_shopping_list` — comfortably past ten. A proxy that treats `pause_turn` as the end of a turn stops somewhere around Thursday and reports success.
-
-Resume by sending the assistant's own content back and requesting again, up to a ceiling (six). The docs show *replacing* the message list with a single assistant message; Misen **accumulates** into one instead:
-
-```python
-messages = [*history, user_turn, {"role": "assistant", "content": all_blocks_so_far}]
-```
-
-Appending a second assistant message would break the alternating-role rule the API enforces. Replacing the first would drop the tool calls it already made. One growing assistant turn is the only shape that satisfies both, and it is what gets persisted at the end — so the transcript holds every tool call, not just the last continuation's.
-
-**The SSE protocol, which the app depends on.**
+Misen has no assistant of its own. Planning happens in a **Claude Project on
+claude.ai** with Misen's MCP server attached as a custom connector.
 
 ```
-event: start   {"conversation_id": "..."}
-event: text    {"text": "..."}                                   append to the bubble
-event: tool    {"name": "get_pantry_items", "state": "running"}   also "done" | "error"
-event: done    {"conversation_id", "stop_reason", "usage": {...}}
-event: error   {"code", "message"}                               show it, stop the spinner
+claude.ai Project  ──MCP over HTTPS──►  mcp.misen.<domain>  ──►  Companion
+   member token as                      13 tools                └──►  Mealie
+   connector auth                       stateless, forwards
+                                        the caller's token
 ```
 
-Exactly one terminal event arrives, `done` or `error`. Failures knowable before the first byte — no API key, `can_use_basil` off, daily cap — are real HTTP status codes (503, 403, 429); everything after the response has started has to be an `error` event, because the status line is long gone.
+Nothing in Misen calls a model, holds an API key, or streams a token. The whole
+assistant is the tool surface in §6 plus a connector.
 
-Tool *names* go over the wire, not phrases. Turning `get_pantry_items` into "Checking the pantry…" is presentation, and the app already owns presentation.
+### Why this replaced Basil
 
-**A turn is persisted as a pair or not at all.** The user message and the assistant reply are written in one transaction after the turn succeeds. Writing the user message up front looks tidier and is a trap: a turn that dies mid-stream would leave the thread ending on a user message, and the next request would then send two user turns in a row — which the API rejects. One failed turn would break that conversation permanently.
+Rev 2 specced Basil: a chat tab, a server-side proxy to the Messages API with
+the MCP server attached, an SSE path, a transcript table, and a daily spend cap.
+It was built and tested. Rev 3 removed it.
 
-**Model is a config value.** `MISEN_CHAT_MODEL`, defaulting to `claude-opus-5` ($5/$25 per MTok). The source plan recommended Claude Haiku 4.5 ($1/$5, 200K context) on the grounds that meal planning is "mostly tool orchestration". I'd push back gently: the tool calls are the easy part, and the value is judgment — reading a half-empty fridge and a Tuesday with 25 minutes in it and proposing something good. Run the default for a week, look at `chat_usage`, then decide. Swapping the string is a one-line change and that's the whole reason it's config.
+The argument is that Basil was a **second front door onto capabilities that
+already existed**, and the more expensive one:
 
-**Prompt caching.** The system prompt and tool definitions are stable across every turn; put a `cache_control` breakpoint on the last system block. Cache reads cost ~0.1× and this prefix is sent on every message. Do not interpolate the date or the member's name into the system prompt — that invalidates the cached prefix on every request. Volatile context goes in the first user message.
+| | Basil | Claude Project |
+|---|---|---|
+| Model access | Anthropic API key, metered per message | Each member's own Claude subscription |
+| Capability | A 16k-token proxy with a fixed prompt | Claude, with Projects, memory, artifacts |
+| Cost to build | Proxy, SSE, transcript, cap, chat UI | A connector, and OAuth to remove the paste |
+| Where planning happens | Inside Misen | claude.ai — a different app |
 
-### System prompt
+That last row is the real cost and it is not small: on a phone, planning means
+leaving Misen. Rev 3 accepts it. The four tabs are for *looking things up and
+checking things off* — the two things you do standing in a kitchen or a store —
+and planning is a sit-down activity that was always going to be a conversation.
 
-Not final text, but the shape and the load-bearing content:
+**This was anticipated.** Decision 7 deferred OAuth on the grounds that "adding
+OAuth later doesn't change the tools", and §3 justified the MCP server partly
+because "a future Claude Project gets identical capabilities for free". Both
+held exactly: the thirteen tools moved over unchanged.
 
-- **Who Basil is.** Warm, brief, practical. A person who cooks, not a nutritionist and not a chatbot. A sentence or two unless asked for more.
-- **Household context.** Injected per request from `get_household` semantics — who lives here, their names, the timezone, when the week starts. Dinners only. Weeknights are time-pressured.
-- **The standing workflow.** Check the menu (both weeks) before planning so you don't overwrite decided nights. Check the pantry before suggesting. Lead with what's about to expire. Search the library before inventing.
-- **Freeform meals are fine.** Not every night needs a recipe. Offer "Leftovers" and "Takeout" as real options when a week is looking overloaded.
-- **Write discipline.** Confirm before overwriting a planned night. Never mark something used unless the user said so. Never clear a night except on explicit request.
-- **Instacart.** After a week is planned, offer to cart what's missing. Always show what's in the cart and get approval before any paid order — the standing rule, restated here because it matters most in the one flow that spends money. **This paragraph is conditional**: it is only in the prompt when Instacart is configured (below), because a Basil that offers to order groceries it has no way to order is worse than one that never mentions it.
-- **Brevity.** This renders in chat bubbles on a phone. Long answers are wrong answers.
+### Setup
 
-### Conversations
+Per member, once:
 
-One thread per member, scoped by `member_id` *and* `household_id`. Nick can't read Mara's chat. Both threads hit the same pantry, menu, and shopping data through MCP — so if Mara plans Tuesday in her thread, Nick sees it on the shared Menu tab immediately without seeing the conversation that produced it. Shared state, separate voices.
+1. Add a custom connector in claude.ai pointing at `https://mcp.misen.<domain>/mcp`.
+2. Authenticate with that member's own token from `provision.py`.
+3. Create a Project and enable the connector on it.
 
-Members with `can_use_basil = false` get a `403` and the app hides the tab rather than showing a dead end.
+**Each member uses their own token.** The MCP server forwards whatever it is
+given, so a connector reaches exactly what that member could reach through the
+app, and `cooked_by` records the right name. Sharing one token would work and
+would be wrong — it makes two people indistinguishable in the menu history.
 
-### Instacart, without any Instacart code
+The Project's custom instructions are where Basil's system prompt went, minus
+everything that was scaffolding. Worth keeping from it:
 
-*(Settled in phase 5. Decision 2 says "no Instacart code anywhere in v1, but Basil already has the connector" — which was true of claude.ai and not of the Messages API, where Basil has whatever tools we hand it. The gap is closed without breaking the decision.)*
+- **Ask before overwriting a planned night.** The tools allow it; the habit
+  shouldn't be silent.
+- **Plan around what's in the pantry and what expires first.** This is the
+  whole point of the pantry existing.
+- **Freeform nights are fine.** Not every dinner needs a recipe; `set_weekly_menu`
+  takes a plain title, and offering "or just do leftovers" is a feature.
+- **Build the shopping list after finishing a plan**, and say what was skipped
+  as already on hand.
 
-Instacart publishes its own remote MCP server. Misen declares it as a **second** `mcp_servers` entry with a second `mcp_toolset`, exactly like its own — so ordering costs one config block and still ships zero lines of Instacart integration.
+Unlike a system prompt Misen shipped, these are editable by the person using
+them, which is the right place for taste to live.
 
-```
-INSTACART_MCP_URL=      # https://docs.instacart.com/developer_platform_api
-INSTACART_API_KEY=
-```
+### What the household loses
 
-Both blank is the default and means Instacart is off: no server declared, no toolset, and the Instacart paragraph is absent from the system prompt. Set both and all three appear together — they are built from one condition so they can't drift into the 400 the API returns when a declared server has no toolset.
+Stated plainly rather than buried:
 
-The tools create a shopping list on Instacart Marketplace for the user to review and check out themselves. That is what the phase 5 criterion means by "a reviewable cart", and it keeps the final tap — the one that spends money — with a person.
+- **No assistant on the phone in the kitchen.** "What can I make tonight?" now
+  means opening Claude.
+- **No shared assistant state.** Each member's conversations are their own, in
+  their own account. The *data* is still shared — if Mara plans Tuesday, Nick
+  sees it on the Menu tab immediately — but there is no household transcript.
+- **A Claude subscription per planner**, rather than one metered API key for the
+  household.
 
-### Cost guardrails
+### Instacart, still without any Instacart code
 
-1. Per-member daily message cap (config, default 100). Exceeded → a friendly refusal, not a 500. The day rolls over at the *household's* midnight, not the server's — a UTC box would end a New York household's day at 8pm.
-2. Truncate history at ~40 turns before sending; conversations that long have stopped being about dinner. A slice can land on an assistant message, so the leading orphan is dropped: the API requires a conversation to begin with a user turn.
-3. Log every turn to `chat_usage` — one row per *turn*, not per API call, so the `pause_turn` continuations are summed into it. A weekly glance at the sum is the whole cost-monitoring strategy and it's sufficient.
-4. One cache breakpoint on the last system block. It covers the tool definitions too, which are the expensive part: Anthropic expands the MCP toolset into thirteen full schemas on every request.
+Decision 2 said: no Instacart code anywhere in v1, but the list is fully
+readable and writable through the tools. That survives rev 3 intact, and gets
+simpler — Instacart publishes its own remote MCP server, so it is added to the
+same Project as a **second connector**.
+
+Misen ships zero lines of Instacart integration and now also holds zero
+Instacart credentials: the key lives in the member's claude.ai account. Get one
+at [docs.instacart.com](https://docs.instacart.com/developer_platform_api).
+
+The standing rule is unchanged and matters most here: **show the cart and get
+approval before any paid order.**
 
 ---
 
@@ -487,7 +465,7 @@ Ship the tokens as a `Theme` enum before building any screen. Every view reads f
 | Surface | `#FFFFFF` |
 | Ink / muted / faint | `#2A241E` / `#8C8175` / `#A79B8B` |
 | Primary (terracotta) | `#C4573A` — active tab, FAB, primary buttons, user bubble |
-| Herb green | `#5E7C4F` — Basil, completed checks, progress |
+| Herb green | `#5E7C4F` — completed checks, progress |
 | Accent brown | `#B08247` — eyebrows, day labels |
 | Display type | Newsreader (serif), embedded |
 | UI type | DM Sans, embedded |
@@ -506,14 +484,15 @@ Six meal-placeholder gradients at 140°, assigned by hashing the recipe slug so 
 | **Plan a meal** | New, small. Two paths: **Choose a recipe** opens a searchable picker over the library; **Just a name** is a single text field and a Save button. Both land on the same `PUT /menu/{week}/{day}`. The freeform path must be no more than two taps and a word — the moment it feels like data entry, people stop planning. |
 | **Pantry** | Segmented Fridge / Pantry / Freezer, active = white pill with terracotta text. Rows: square check (fills green), name + quantity, expiry chip — amber `#FBEBD3`/`#B0632F` at ≤3 days, red `#F8DAD3`/`#C0392B` at today-or-overdue. Used items strike through at 45% opacity, then leave on next refresh. Dashed `＋ Add item`. |
 | **Add Pantry Item** | Full-screen. Serif name field, "Store in" segmented (active = terracotta), Quantity + Unit, optional use-by date, quick-add chips (Milk, Eggs, Butter, Onions, Rice). |
-| **Shopping** | Header + green progress bar. Inset white cards grouped by aisle. Round check rings fill green; checked rows strike through and fade. A banner when the generated list had freeform gaps. **No Instacart button** (decision 2) — the footer offers "Ask Basil to order these", which switches to Basil with the input pre-seeded. |
-| **Basil** | Green leaf avatar, status dot, "Your meal planning helper". Assistant bubbles white left (`16 16 16 4`), user bubbles terracotta right (`16 16 4 16`). Embedded recipe suggestion cards. Suggestion chip row above the input. Auto-scroll via `ScrollViewReader` — never `scrollIntoView`. Hidden entirely for members without `can_use_basil`. |
+| **Shopping** | Header + green progress bar. Inset white cards grouped by aisle. Round check rings fill green; checked rows strike through and fade. A banner when the generated list had freeform gaps. **No Instacart button** (decision 2), and no "ask the assistant" footer either — ordering is a conversation that happens in the Claude Project (§7). |
 
-Tab bar: 5 tabs, 24px stroked icons, active terracotta, inactive faint. SF Symbols where they fit; custom for the Basil leaf and dish glyph.
+There is no fifth tab. The design source has a Basil screen — green leaf avatar, chat bubbles, suggestion chips — and rev 3 drops it; see §7 for what replaced it.
+
+Tab bar: 4 tabs, 24px stroked icons, active terracotta, inactive faint. SF Symbols where they fit; custom for the dish glyph.
 
 ### iPad — split view and Cook Mode
 
-**Layout.** `NavigationSplitView` with a persistent sidebar (the five sections as a list, not a tab bar) and a two-column content/detail area. The wins are concrete: the Menu shows both weeks side by side with no segmented control; Recipes shows the list and the selected recipe together; Pantry shows all three locations as columns instead of a segmented control; Shopping shows aisles in a multi-column grid so a full list fits without scrolling. Same views, different container — not a second codebase.
+**Layout.** `NavigationSplitView` with a persistent sidebar (the four sections as a list, not a tab bar) and a two-column content/detail area. The wins are concrete: the Menu shows both weeks side by side with no segmented control; Recipes shows the list and the selected recipe together; Pantry shows all three locations as columns instead of a segmented control; Shopping shows aisles in a multi-column grid so a full list fits without scrolling. Same views, different container — not a second codebase.
 
 **Cook Mode** is the reason the iPad matters, and it is a distinct screen rather than a bigger recipe detail:
 
@@ -531,7 +510,7 @@ Cook Mode is available on iPhone too, in a single-column form, but it is designe
 
 The contract, precisely, because this is where client bugs live:
 
-**Cached in SwiftData:** pantry items, this week's and next week's menu, the shopping list, recipe list metadata + thumbnails, full bodies of recipes on the menu (so Cook Mode works in a kitchen with bad wifi), and the current Basil conversation.
+**Cached in SwiftData:** pantry items, this week's and next week's menu, the shopping list, recipe list metadata + thumbnails, and full bodies of recipes on the menu (so Cook Mode works in a kitchen with bad wifi).
 
 **Never cached:** full bodies of recipes not on the menu (fetched on open, cached opportunistically after), and anything from the Add Recipe flows.
 
@@ -545,8 +524,6 @@ The contract, precisely, because this is where client bugs live:
 
 **Scaling is computed server-side but cached client-side** per `(slug, servings)`, so a scaled recipe opened once works in Cook Mode offline.
 
-**Basil is online-only.** No offline queue for chat — it needs live tool access to be worth anything. Offline shows cached history and a disabled input.
-
 ---
 
 ## 9. Notifications
@@ -555,7 +532,7 @@ The contract, precisely, because this is where client bugs live:
 
 **The reminder.** Default Friday 5pm household-local, configurable to Saturday and to any hour, or off. Copy names the gap rather than nagging: *"Next week has 5 open nights — plan them now so there's time to order."* Tapping opens the Menu tab on **next** week.
 
-**Scheduling.** `UNUserNotificationCenter` with a repeating weekly trigger, registered at first launch after permission and re-registered whenever the preference changes. Preferences persist to `PUT /reminders` so a reinstall recovers them and Basil can speak accurately about them.
+**Scheduling.** `UNUserNotificationCenter` with a repeating weekly trigger, registered at first launch after permission and re-registered whenever the preference changes. Preferences persist to `PUT /reminders` so a reinstall recovers them and `get_household` can report them accurately.
 
 **Conditional cancellation** is where local notifications are weaker than push, and the mitigation is worth stating. If next week is already fully planned, the reminder is noise. So:
 
@@ -576,7 +553,9 @@ Tokens generated by `scripts/provision.py`, which creates a household, its membe
 
 Distribution is manual: paste into each device at first launch through a one-field setup screen. Stored in Keychain with `kSecAttrAccessibleAfterFirstUnlock`. Every request sends `Authorization: Bearer <token>`; Companion hashes, looks up, and resolves `(member, household)`.
 
-`role` and `can_use_basil` are enforced server-side, always. The app hides UI the member can't use, but hiding a button is a courtesy, not a control.
+`role` is a label, not a permission: nothing in the API branches on it, so there is no server-side capability check to get wrong. Tenant scoping is the control that matters, and it is enforced in one dependency (§4).
+
+**The connector is authenticated with the member's own token.** The MCP server verifies it against Companion's `/me` and forwards it on every call, holding no credentials itself — so a Claude Project reaches exactly what that member could reach through the app, and no more. OAuth is the next work item; it removes the paste without changing that property.
 
 The MCP server holds its own bearer token per member, passed by Companion in `mcp_servers[].authorization_token`.
 
@@ -594,7 +573,7 @@ Rotation: re-run the script, update the row, re-paste. At household scale this i
 
 **Caddy:** three subdomains (`mealie.`, `api.`, `mcp.`), automatic HTTPS. Only Caddy publishes ports; the rest are on the internal network.
 
-**Secrets** in `.env`, gitignored, with a committed `.env.example` listing every key and no values: `ANTHROPIC_API_KEY`, `MEALIE_API_TOKEN`, `MCP_TOKEN`, `MISEN_CHAT_MODEL`, `MISEN_DAILY_MESSAGE_CAP`.
+**Secrets** in `.env`, gitignored, with a committed `.env.example` listing every key and no values. After rev 3 there is exactly one: `MEALIE_API_TOKEN`. No model API key exists anywhere in the deployment, and the MCP server has no token of its own — callers present theirs.
 
 **Backups** — nightly cron, 30-day retention, off-box:
 1. `sqlite3 .backup` on the companion DB (never `cp` a live SQLite file)
@@ -625,16 +604,16 @@ Each phase has a "done when" someone else could verify.
 **On "count matches":** it does not, and saying so is the point. Of 89 recipes in that cookbook's contents, 64 parsed and 25 exist only as photographs. Of the 64, eight came back as fragments and are marked for retyping. The importer reports all three numbers rather than importing 64 and calling it done.
 
 **Phase 3 — MCP server.** Thirteen tools with the §6 descriptions, bearer auth, calling both backends.
-*Done when:* connected to Claude Desktop, a single conversation plans three dinners *including one freeform*, scales one recipe to 6 servings, adds two pantry items, and builds a shopping list — with every write visible in the database and correctly scoped to the household.
-**Done, mechanically.** 50 tests, plus that exact scenario driven end to end by a real MCP client against a real MCP server and a real Companion, asserting the rows in SQLite and that a second household sees none of them. What has *not* happened is a human connecting Claude Desktop to it, which needs the host — the judgement half of this criterion (do the descriptions make a model reach for the right tool?) can't be checked from here.
+*Done when:* connected to a real Claude client, a single conversation plans three dinners *including one freeform*, scales one recipe to 6 servings, adds two pantry items, and builds a shopping list — with every write visible in the database and correctly scoped to the household.
+**Done, mechanically.** 51 tests, plus that exact scenario driven end to end by a real MCP client against a real MCP server and a real Companion, asserting the rows in SQLite and that a second household sees none of them. What has *not* happened is a human connecting a Claude client to it, which needs the host — the judgement half of this criterion (do the descriptions make a model reach for the right tool?) can't be checked from here. **After rev 3 this criterion is the product**, not a phase-3 checkpoint: it is now phase 5's acceptance test too.
 
-**Phase 4 — iPhone app.** Theme, five tabs, the two-week Menu, the plan-a-meal flow, scaling UI, three forms, SwiftData cache, sync queue, local notifications.
+**Phase 4 — iPhone app.** Theme, four tabs, the two-week Menu, the plan-a-meal flow, scaling UI, three forms, SwiftData cache, sync queue, local notifications.
 *Done when:* running on both phones from TestFlight; every screen matches the design at a glance; airplane mode on Shopping still checks items off and syncs on reconnect; a recipe scaled to 8 servings shows sensible quantities and honest markers on the lines that didn't scale; and the Friday reminder fires with an accurate open-night count.
 
-**Phase 5 — Basil.** `/generate/chat` with the corrected MCP connector call, SSE, chat UI, system prompt, usage logging, capability gating.
-*Done when:* "plan my dinners for the week" from inside the app produces seven filled nights on the Menu tab, at least one of which Basil correctly chose to make freeform; and asking it to order the missing groceries produces a reviewable Instacart cart.
-**Server side done.** Three endpoints, 37 tests, and the connector shape asserted against the SDK's own event classes rather than a dict-shaped fake. Streaming was verified against a real uvicorn with a timer, not just a test client that would collect a buffered body and call it a stream. `pause_turn` handling was added — it is not in rev 1 of this section and without it the headline criterion cannot pass.
-**Not done:** the criterion names *the app*, and there is no app until phase 4. What can't be checked from here is whether the system prompt actually produces good dinners — that needs a real key, a reachable MCP host, and a week of use.
+**Phase 5 — The Claude Project.** Connector setup per member, Project instructions, and OAuth so members sign in rather than pasting a token.
+*Done when:* "plan my dinners for the week" in the Project produces seven filled nights visible on the Menu tab, at least one of which Claude correctly chose to make freeform; the shopping list builds from them with pantry items skipped; and a second member's connector resolves to *that* member.
+**Rewritten in rev 3.** The previous phase 5 built Basil — three endpoints, 37 tests, SSE, `pause_turn` handling — and it worked. It was removed rather than shipped; see §7. What survives is the part that was never Basil-specific: the thirteen tools, unchanged.
+**Not done:** everything here needs the host. Connector setup and the acceptance run above are blocked on phase 0, and OAuth is unstarted — the two facts to establish first are what claude.ai's custom connectors require for auth, and what FastMCP's current auth API offers. Bearer tokens work in the meantime.
 
 **Phase 6 — iPad and Cook Mode.** `NavigationSplitView`, two-week side-by-side Menu, multi-column Pantry and Shopping, Cook Mode with scaled ingredients, wake lock, and step timers.
 *Done when:* a real dinner is cooked start to finish from the iPad on the counter without the screen sleeping, without leaving Cook Mode, and with the ingredient checklist used.
@@ -648,7 +627,7 @@ Each phase has a "done when" someone else could verify.
 
 ## 13. Risks and open questions
 
-**Pantry drift is still the one that decides whether this works.** Every other risk is technical. If the pantry stops reflecting the fridge, Basil's suggestions degrade to guesses and trust goes with them. Mitigations: quick-add chips, a visible expiry view, and making "we used the chicken" a one-sentence interaction. Watch it during phase 7 — if the pantry is wrong by Wednesday, that's the signal to reconsider decision 5 toward a lighter staples-checklist model rather than a heavier structured one.
+**Pantry drift is still the one that decides whether this works.** Every other risk is technical. If the pantry stops reflecting the fridge, Claude's suggestions degrade to guesses and trust goes with them. Rev 3 makes this slightly worse, not better: the pantry is now updated in one app and read in another, so "we used the chicken" has to survive a context switch. Mitigations: quick-add chips, a visible expiry view, and making "we used the chicken" a one-sentence interaction. Watch it during phase 7 — if the pantry is wrong by Wednesday, that's the signal to reconsider decision 5 toward a lighter staples-checklist model rather than a heavier structured one.
 
 **Scope grew meaningfully in rev 2, and phase 4 is where it lands.** Multi-household is nearly free (a column and a `WHERE`), but the two-week Menu, scaling UI, freeform planning, and notifications all hit the same phase, and phase 6 adds a second layout plus a genuinely new screen. If something has to give, **Cook Mode timers and the multi-column iPad Pantry are the first cuts** — they're polish. The two-week Menu and freeform meals are not; they change whether the app fits how the week actually works.
 
@@ -658,13 +637,17 @@ Each phase has a "done when" someone else could verify.
 
 **Local notifications can fire stale.** Bounded, understood, documented in §9. Accepted for v1.
 
-**API spend.** Bounded by the daily cap, visible in `chat_usage`. Low risk.
+**API spend is no longer a risk.** Rev 2 bounded it with a daily cap and a `chat_usage` table. Rev 3 removes the spend entirely — the deployment holds no model API key, and conversations bill to each member's own Claude subscription.
+
+**`mcp.` is now a single point of failure for the assistant.** Under Basil, an unreachable MCP host degraded one feature and the app kept working. Now it is the difference between Claude being able to see Misen and not. The app itself is unaffected — it talks to Companion directly — but "plan my week" stops working entirely. Mitigation is the same as for everything else on that box: it is one Caddy site and one container, and `deploy/README.md` step 8 tests it from off-host.
 
 **No Xcode in the dev container.** The backend and MCP server can be built and tested there; the iOS app can be written but not compiled. Expect a round of compile-error fixing when phase 4 first opens in Xcode — and phase 6 doubles the surface area for that, since split-view layout problems only appear at runtime. Budget for it rather than being surprised.
 
-**Open — worth deciding before phase 4:** what should the Menu tab's **Swap** actually do? The prototype cycles a hardcoded pool. Real options: (a) open the recipe picker, (b) ask Basil for one alternative inline, (c) cycle recipes tagged for that slot. (a) is most predictable and least interesting; (b) is most in keeping with the product now that freeform meals exist and Basil can offer "or just do leftovers". Not blocking until the Menu tab is built.
+**Open — worth deciding before phase 4:** what should the Menu tab's **Swap** actually do? The prototype cycles a hardcoded pool. Rev 2 listed "ask Basil for one alternative inline" as the most interesting option; with no in-app assistant that is off the table, which leaves (a) open the recipe picker or (b) cycle recipes tagged for that slot. (a) is predictable and honest. Not blocking until the Menu tab is built.
 
-**Settled:** children get no Basil access. `can_use_basil` stays a boolean rather than becoming a per-member spend allowance. If that changes, swapping the column for an integer cap is a small migration on a table with a handful of rows.
+**Open, and now the main one:** does planning in a separate app actually hold up over a few weeks? This is the bet rev 3 makes and it is not provable from here. Watch it during phase 7 alongside pantry drift — if planning stops happening because it means leaving Misen, the answer is not to rebuild Basil but to ask what the Menu tab could do on its own.
+
+**Settled in rev 3:** assistant access is a claude.ai account, not a Misen permission. `can_use_basil` is gone and there is no per-member spend allowance to design, because there is no spend.
 
 ---
 

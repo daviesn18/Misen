@@ -10,7 +10,7 @@ Phase 0 is done when the last checkbox in [Verify](#verify) is ticked.
 
 ## Before you start
 
-Four of these block a step partway through, so it is worth having them in hand
+Three of these block a step partway through, so it is worth having them in hand
 rather than discovering it at step 6 with a half-built stack.
 
 **Accounts and access**
@@ -18,8 +18,9 @@ rather than discovering it at step 6 with a half-built stack.
 - [x] A host — see [step 0](#0-pick-a-host). Oracle Cloud accounts can take a
       few hours to verify, so start that first if you're going that way
 - [ ] A domain you can add DNS records to
-- [ ] An Anthropic API key ([console.anthropic.com](https://console.anthropic.com)) —
-      Basil is off without it, though everything else works
+- [ ] A Claude account per person who will plan meals — planning happens in a
+      Claude Project (step 8), billed to that subscription. **No Anthropic API
+      key is needed anywhere in this deployment**
 
 **Decisions** — `provision.py` in step 6 takes these as arguments and there is
 no interactive prompt
@@ -173,15 +174,16 @@ Testing against a flaky record? Uncomment `acme_ca` (staging) in the Caddyfile
 first — staging certs are untrusted by browsers but aren't rate limited.
 
 **`mcp.` is the one hostname that has to be reachable from the open internet.**
-When Basil uses a tool, Anthropic's servers make the request to it — so it
+When Claude uses a tool, claude.ai's servers make the request to it — so it
 cannot live behind a VPN, a Tailscale-only network, or an IP allowlist. The
-other two could, if you ever wanted them to.
+other two could, if you ever wanted them to. This is also the record to get
+right first: with planning in a Claude Project, `mcp.` being unreachable isn't
+one broken feature, it's Claude not being able to see Misen at all.
 
 **No proxying CDN in front of any of them.** A proxy that terminates TLS breaks
-the certificate request, and one that buffers responses breaks both SSE streams
-— Basil's replies and the MCP tool results — which surfaces as a hang rather
-than an error. If DNS ever moves to Cloudflare, these three records must be
-DNS-only, not orange-clouded.
+the certificate request, and one that buffers responses breaks the MCP stream,
+which surfaces as a hang rather than an error. If DNS ever moves to Cloudflare,
+these three records must be DNS-only, not orange-clouded.
 
 ### The records for this deployment
 
@@ -234,7 +236,6 @@ Fill in `.env`. The ones with no default:
 | `MEALIE_DOMAIN` / `API_DOMAIN` / `MCP_DOMAIN` | From step 2 |
 | `MEALIE_DEFAULT_EMAIL` | Login for Mealie's first admin account |
 | `MEALIE_PUID` / `MEALIE_PGID` | `id -u` and `id -g` |
-| `ANTHROPIC_API_KEY` | console.anthropic.com — Basil is off until this is set |
 | `MEALIE_API_TOKEN` | Minted in step 5, blank for now |
 | `DATA_DIR` / `BACKUP_DIR` | Absolute paths, e.g. `/srv/misen/data` |
 
@@ -297,12 +298,15 @@ docker compose exec companion python scripts/provision.py \
 ```
 
 Each `--member` is `name:initials:color[:role]`. Colors: `terracotta`, `green`,
-`gold`, `plum`. Add a child with `--member "Ivy:I:gold:child"` — children are
-created with Basil switched off.
+`gold`, `plum`. Add a child with `--member "Ivy:I:gold:child"`. `role` is for
+display and for recording who cooked; nothing in the API branches on it.
 
 **The tokens print once and are never stored** — only their sha256 goes in the
 database. Copy them somewhere safe before closing the terminal. If one is lost,
 `--rotate <member_id>` issues a new one and invalidates the old.
+
+Keep them to hand: the same token is what each person pastes into claude.ai in
+step 8 to connect the MCP server.
 
 Check one works:
 
@@ -318,7 +322,7 @@ and set `base_url` and `token`.
 ## 7. Load the recipes
 
 The library is empty until something puts recipes in it, and an empty library
-makes the next two steps hard to judge — Basil has nothing to plan with, and
+makes the next two steps hard to judge — Claude has nothing to plan with, and
 the shopping list has nothing to build from.
 
 ```sh
@@ -350,36 +354,65 @@ See [`scripts/README.md`](../scripts/README.md) for other sources.
 
 ---
 
-## 8. Check Basil
+## 8. Connect the Claude Project
 
-Basil needs two things the other endpoints don't: an `ANTHROPIC_API_KEY`, and
-an `mcp.` hostname that Anthropic's servers can actually reach. Both fail
-loudly, which is the point.
+Misen has no built-in assistant. Planning happens in a Claude Project on
+claude.ai with this deployment's MCP server attached as a connector, so the
+conversation is billed to that person's Claude subscription and no API key
+exists anywhere on this host.
+
+Before touching claude.ai, prove the endpoint is actually reachable **from off
+the host** — a curl run on the box itself proves nothing about what claude.ai
+can reach:
 
 ```sh
-curl -N -X POST https://api.misen.<domain>/generate/chat \
-     -H "Authorization: Bearer <token>" \
-     -H "Content-Type: application/json" \
-     -d '{"message":"what is in the pantry?"}'
+curl -i https://mcp.misen.<domain>/mcp                       # expect 401
+curl -i -H "Authorization: Bearer <token>" https://mcp.misen.<domain>/mcp
 ```
 
-`-N` matters — without it curl buffers and you learn nothing about streaming.
-You should see events arrive one at a time, ending in `event: done`.
+A 401 without the token is the correct answer: it means TLS terminated, Caddy
+routed, and the MCP server answered. A timeout means DNS, the firewall, or the
+VCN security list — go back to step 1's pre-flight.
 
-| What comes back | What it means |
+Then, in claude.ai:
+
+1. Settings → Connectors → **Add custom connector**.
+2. URL: `https://mcp.misen.<domain>/mcp` — the full path, not the bare host.
+3. Authenticate with that person's member token from step 6.
+4. Create a Project, and enable the Misen connector on it.
+
+Each person uses **their own** member token. The MCP server forwards whatever
+token it is given to Companion, so the connector reaches exactly what that
+member could reach through the app, and `cooked_by` records the right name.
+
+Ask it something that requires a read, then something that requires a write:
+
+> What's in the pantry?
+>
+> Plan dinners for next week from our recipes.
+
+Then open Mealie or `GET /menu` and confirm the menu actually persisted. The
+write path is the one worth checking by hand — a tool call that silently failed
+still leaves Claude sounding confident.
+
+| What happens | What it means |
 |---|---|
-| `503 basil_unconfigured` | `ANTHROPIC_API_KEY` or `MCP_DOMAIN` is blank in `.env` |
-| `403 basil_not_allowed` | That token belongs to a child member |
-| `event: error` with `basil_failed` | The API rejected the request. Check `docker compose logs companion` — the status code is logged. |
-| Text, but Basil says it can't see the pantry | Anthropic can't reach `mcp.misen.<domain>`. Test it from off-network, not from the host. |
-| Everything arrives at once at the end | `flush_interval -1` is missing from the api block in the Caddyfile |
+| claude.ai can't add the connector | `mcp.` isn't reachable from the internet, or the URL is missing `/mcp` |
+| Connector added, but every tool call fails | Token rejected. Confirm it with `curl -H "Authorization: Bearer <token>" https://api.misen.<domain>/me` |
+| Tools work but the pantry looks empty | The right token for the wrong household, or the pantry genuinely is empty |
+| Tool calls hang, then time out | `flush_interval -1` missing from the **mcp** block in the Caddyfile |
+| Menu writes report success but nothing persists | Check `docker compose logs companion mcp` — a Mealie or database error surfaces there |
 
-**Ordering groceries is optional and off by default.** Misen has no Instacart
-code; Basil orders by being handed Instacart's own MCP server as a second
-toolset. Set `INSTACART_MCP_URL` and `INSTACART_API_KEY` (get a key at
-[docs.instacart.com](https://docs.instacart.com/developer_platform_api)) and
-the tools and the matching paragraph of Basil's prompt appear together. Leave
-them blank and Basil never brings ordering up.
+**Auth is a pasted token today, not a sign-in.** OAuth for the connector is the
+next piece of work; until it lands, `--rotate` in step 6 is what revokes access,
+and it cuts off the app and the connector together.
+
+**Ordering groceries stays optional.** Misen has no Instacart code and no
+longer proxies to it. Add Instacart's own MCP server to the same Project as a
+second connector — get a key at
+[docs.instacart.com](https://docs.instacart.com/developer_platform_api) — and
+Claude can build a cart from the list it just made. That credential lives in
+the claude.ai account, not on this host.
 
 ---
 
@@ -434,8 +467,11 @@ Phase 0 is complete when all of these hold:
 - [ ] `./restore.sh --into …` completes and a scratch Mealie starts against it
 - [ ] `curl -H "Authorization: Bearer <token>" .../me` returns the member you minted
 - [ ] `curl -X POST https://mcp.misen.<domain>/mcp` returns **401** from off-network — proof it is reachable and refusing anonymous callers
-- [ ] `POST /generate/chat` streams events one at a time and ends in `event: done`, and Basil can name something that is actually in the pantry
 - [ ] Mealie shows the imported recipes, and one spot-checked recipe has its ingredients and serving count intact
+- [ ] The connector is added in claude.ai and lists all thirteen tools
+- [ ] Claude can name something that is actually in the pantry
+- [ ] Claude can set a menu slot, and it is still there on `GET /menu` afterwards — the write path, checked outside Claude
+- [ ] A second member's token resolves to *that* member, not the first one
 
 ---
 
@@ -467,8 +503,7 @@ and read Mealie's release notes.
 | MCP returns 401 even with a good token | It verifies tokens by calling Companion's `/me`. If Companion is unhealthy, nobody can be verified, and 401 is the honest answer. Check `docker compose ps` first. |
 | `required variable … is missing a value` | A key in `.env.example` is blank in `.env`. |
 | Recipes and shopping 502 while the pantry and menu work | `MEALIE_API_TOKEN` is blank or wrong in `.env` (step 5). Companion stays healthy on purpose — only the Mealie-backed half is down. |
-| Basil replies arrive all at once instead of streaming | `flush_interval -1` missing from the api block in the Caddyfile. |
-| Basil answers but has no tools, or says the pantry is empty when it isn't | Anthropic couldn't reach `MISEN_MCP_URL`. It must be the **public** URL including the `/mcp` path — `https://mcp.misen.<domain>/mcp`, never `http://mcp:8001`. Anthropic's servers make that connection, not Companion. |
-| `503 basil_unconfigured` | `ANTHROPIC_API_KEY` or `MCP_DOMAIN` is blank in `.env`. |
-| `429 daily_cap_reached` | `MISEN_DAILY_MESSAGE_CAP` hit for that member today. Resets at the household's midnight, not UTC. |
+| claude.ai won't add the connector | `mcp.misen.<domain>` isn't reachable from the internet, or the URL is missing the `/mcp` path. Test from off-network — never from the host. |
+| Claude's tool calls hang, then time out | `flush_interval -1` missing from the **mcp** block in the Caddyfile. |
+| Claude says the pantry is empty when it isn't | Right token, wrong household — or a different member than you think. Check with `curl -H "Authorization: Bearer <token>" .../me`. |
 | Ran out of disk | Old archives. Lower `BACKUP_RETAIN_DAYS`, confirm off-box copies are working. |

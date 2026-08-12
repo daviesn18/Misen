@@ -1,5 +1,13 @@
 # Handoff: Misen — Family Meal Planning App (iOS)
 
+> **Superseded in part.** This is the original design handoff, kept as received.
+> [`docs/PRD.md`](../PRD.md) rev 3 removed the Basil tab: there is no in-app
+> assistant, and the tab bar has four tabs, not five. Everything here about
+> **Menu, Recipes, Pantry, and Shopping** — tokens, layouts, interactions —
+> still stands and is still the visual spec. Section 7 (Basil) and the Basil
+> rows in the token and navigation tables describe a screen that will not be
+> built; see PRD §7 for what replaced it.
+
 > **Product name:** Misen. **In-app AI assistant:** Basil. Tagline: *"A warm kitchen, in its place."*
 
 ## Overview
