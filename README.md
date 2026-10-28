@@ -58,21 +58,14 @@ Meal Plan Vault itself and calls its MCP server at `https://www.mealplanvault.co
 
 ### Build it (needs a Mac with Xcode 15 or later)
 
-```bash
-brew install xcodegen
-```
+1. Open `ios/Mise.xcodeproj` (double-click it).
+2. Select the **Mise** target, then **Signing & Capabilities**. Choose your team and change the bundle
+   identifier (`com.example.mise`) to one you own, such as `com.yourname.mise`.
+3. Pick an iPhone simulator or your connected iPhone and press **Run** (⌘R).
 
-```bash
-cd ios && xcodegen
-```
-
-```bash
-open Mise.xcodeproj
-```
-
-In Xcode, pick your team under **Signing & Capabilities** and change the bundle id
-(`com.example.mise`) to one you own. Then run on a simulator or your iPhone. A free Apple ID can install
-it on your own phone; TestFlight or the App Store needs a paid developer account.
+A free Apple ID can install it on your own phone; TestFlight or the App Store needs a paid developer
+account. On a real iPhone, the first launch may need you to trust the developer under
+Settings › General › VPN & Device Management.
 
 | File | What it holds |
 | --- | --- |
