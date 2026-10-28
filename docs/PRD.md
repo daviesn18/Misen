@@ -162,8 +162,8 @@ Cook Mode keeps ingredients in a side column. Same views, different container.
 | Phase | What | Status |
 | --- | --- | --- |
 | A | Web prototype on the Vault (Artifact + connector) | **Done** |
-| B | iOS app on the Vault: sign-in, MCP client, Menu, Recipes, Cook Mode, Shopping | **Done, interim styling.** Built and running on Nick's iPhone; sign-in and recipe reads confirmed |
-| C | **Restyle to the design handoff.** Theme tokens, embedded fonts, Cook tab replaces Pantry, two-week Menu, editorial recipe cards, add sheet, placeholder gradients, recipe photos | **Next** |
+| B | iOS app on the Vault: sign-in, MCP client, Menu, Recipes, Cook Mode, Shopping | **Done.** Built and running on Nick's iPhone; sign-in and recipe reads confirmed |
+| C | **Restyle to the design handoff.** Theme tokens, embedded fonts, Cook tab replaces Pantry, two-week Menu, editorial recipe cards, add sheet, placeholder gradients, recipe photos | **Code written 2026-10-28, awaiting first build on Nick's Mac** |
 | D | iPad split view, Cook Mode ingredient column | Not started |
 | E | Dry run: one real week planned with Claude, shopped and cooked in Misen | Not started |
 | Later | Offline cache for Shopping, weekly reminder, dark mode for the warm palette, "Snap a photo" import | — |
@@ -177,10 +177,12 @@ Cook Mode keeps ingredients in a side column. Same views, different container.
   Worth asking the Vault about API stability and data export.
 - **Unconfirmed response shapes** for meal plan entries, grocery lists and stores (§3). Check them in phase C
   with real data before restyling those screens.
-- **Swap on the Menu card:** what should it do? Options: (a) open the recipe picker, or (b) cycle through
-  recipes with a matching tag. (a) is predictable. Decide in phase C.
-- **Cook tab with nothing planned tonight:** show the week's next planned dinner, or recent recipes?
-- **Dark mode:** the handoff is light-only. Pick dark tokens in phase C or ship light-only.
+- **Settled in phase C:** **Swap** opens the recipe picker for that night. The **Cook tab** with nothing planned
+  tonight shows an empty card with *Plan dinner* and *Browse recipes*, plus the next few planned dinners.
+  **Dark mode** uses a warm dark counterpart of the handoff palette (`Theme.swift`). The app is named **Misen**
+  on the home screen and sign-in.
+- **Lunches and breakfasts:** the household plans kids' lunches in the Vault, though v1's non-goals said
+  dinners only. The Menu shows them small under each dinner, and the Cook tab lists them under "Also today".
 - **Snap a photo:** no Vault tool. Options: leave it out, or link out to the Vault's web app.
 - **Planning outside the app** is still the rev 3 bet: if planning stops happening because it means opening
   Claude, look at what the Menu tab can do alone (Repeat last week, `find_recipes_on_sale` suggestions).

@@ -8,6 +8,7 @@ struct ShopView: View {
     @State private var stores: [StoreConnection] = []
     @State private var storesError = false
     @State private var loading = false
+    @State private var loaded = false
     @State private var error: String?
     @State private var newItem = ""
     @State private var newQty = ""
@@ -19,65 +20,34 @@ struct ShopView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if let error {
-                    ErrorBox(message: error) { Task { await loadAll() } }
-                        .listRowBackground(Color.clear)
-                }
-                if lists.isEmpty && !loading {
-                    ContentUnavailableView("No grocery lists",
-                                           systemImage: "cart",
-                                           description: Text("Build one from the Week tab, or create an empty list."))
-                        .listRowBackground(Color.clear)
-                }
-                if let list {
-                    summary(list)
-                    ForEach(list.categories, id: \.self) { cat in
-                        Section {
-                            ForEach(list.items.filter { $0.category == cat }) { item in
-                                itemRow(item)
-                                    .swipeActions {
-                                        Button(role: .destructive) { Task { await remove(item) } } label: {
-                                            Label("Remove", systemImage: "trash")
-                                        }
-                                    }
-                            }
-                        } header: {
-                            Text(cat).font(.display(16, weight: .semibold)).foregroundStyle(Color.miseInk).textCase(nil)
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    if let error { ErrorBox(message: error) { Task { await loadAll() } } }
+                    if !loaded {
+                        ProgressView().frame(maxWidth: .infinity).padding(.top, 24)
+                    } else if lists.isEmpty {
+                        emptyState
                     }
-                    addSection
-                    storeSection(list)
+                    if let list {
+                        ForEach(list.categories, id: \.self) { cat in
+                            aisle(cat, list.items.filter { $0.category == cat })
+                        }
+                        addItemCard
+                        storesCard
+                    }
                 }
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 720)
+                .frame(maxWidth: .infinity)
             }
-            .scrollContentBackground(.hidden)
-            .background(Color.miseBG)
-            .navigationTitle(list?.name ?? "Shopping List")
-            .navigationBarTitleDisplayMode(.inline)
+            .screenBackground()
+            .toolbar(.hidden, for: .navigationBar)
             .refreshable { await loadAll() }
             .task { await loadAll() }
             .onChange(of: model.pendingListID) { _, _ in Task { await loadAll() } }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        ForEach(lists) { l in
-                            Button {
-                                selectedID = l.id
-                                Task { await loadList() }
-                            } label: {
-                                if l.id == selectedID { Label(l.name, systemImage: "checkmark") } else { Text(l.name) }
-                            }
-                        }
-                        Divider()
-                        Button { newListName = ""; showNewList = true } label: { Label("New list…", systemImage: "plus") }
-                    } label: {
-                        Label("Lists", systemImage: "list.bullet")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    if let list { ShareLink(item: Kitchen.listText(list)) }
-                }
-            }
             .alert("New list", isPresented: $showNewList) {
                 TextField("Costco run", text: $newListName)
                 Button("Create") { Task { await createList() } }
@@ -88,90 +58,185 @@ struct ShopView: View {
 
     // MARK: Pieces
 
-    @ViewBuilder
-    private func summary(_ list: GroceryList) -> some View {
-        Section {
-            HStack {
-                Text("\(list.remaining) of \(list.items.count) items still to get")
-                    .font(.mono(12)).foregroundStyle(Color.miseMuted)
-                Spacer()
-                if let total = estimatedTotal(list) {
-                    Text(total, format: .currency(code: "USD")).font(.display(22, weight: .semibold)).monospacedDigit()
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScreenHeader(eyebrow: list?.name ?? "Groceries",
+                         title: "Shopping List",
+                         subtitle: list.map { $0.remaining == 0 && !$0.items.isEmpty ? "All done" : "\($0.remaining) left of \($0.items.count)" }) {
+                HStack(spacing: 8) {
+                    listsMenu
+                    if let list {
+                        ShareLink(item: Kitchen.listText(list)) {
+                            circleIcon("square.and.arrow.up")
+                        }
+                        .accessibilityLabel("Share list")
+                    }
                 }
             }
+            if let list, !list.items.isEmpty {
+                ProgressLine(value: Double(list.items.count - list.remaining) / Double(list.items.count))
+            }
+        }
+    }
+
+    private var listsMenu: some View {
+        Menu {
+            ForEach(lists) { l in
+                Button {
+                    selectedID = l.id
+                    Task { await loadList() }
+                } label: {
+                    if l.id == selectedID { Label(l.name, systemImage: "checkmark") } else { Text(l.name) }
+                }
+            }
+            Divider()
+            Button { newListName = ""; showNewList = true } label: { Label("New list…", systemImage: "plus") }
+        } label: {
+            circleIcon("list.bullet")
+        }
+        .accessibilityLabel("Your lists")
+    }
+
+    private func circleIcon(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.mInk)
+            .frame(width: 44, height: 44)
+            .background(Color.mSurface, in: Circle())
+            .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: "basket").font(.system(size: 28, weight: .light)).foregroundStyle(Color.mFaint)
+            Text("No shopping list yet").font(.serif(24)).foregroundStyle(Color.mInk)
+            Text("Build one from the week's menu, or start an empty list.").font(.sans(14)).foregroundStyle(Color.mMuted)
+            HStack(spacing: 10) {
+                Button("Go to Menu") { model.tab = .menu }.buttonStyle(PrimaryButtonStyle())
+                Button("New list") { newListName = ""; showNewList = true }.buttonStyle(SecondaryButtonStyle())
+            }
+            .padding(.top, 4)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card(radius: 22)
+    }
+
+    private func aisle(_ name: String, _ items: [GroceryItem]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Eyebrow(text: name)
+            VStack(spacing: 0) {
+                ForEach(items) { item in
+                    itemRow(item)
+                        .contextMenu {
+                            Button(role: .destructive) { Task { await remove(item) } } label: {
+                                Label("Remove from list", systemImage: "trash")
+                            }
+                        }
+                    if item.id != items.last?.id { Divider().overlay(Color.mLine).padding(.leading, 52) }
+                }
+            }
+            .card(radius: 22)
         }
     }
 
     private func itemRow(_ item: GroceryItem) -> some View {
         Button { Task { await toggle(item) } } label: {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: item.checked ? "checkmark.square.fill" : "square")
-                    .font(.title3)
-                    .foregroundStyle(item.checked ? Color.miseMuted : Color.miseTeal)
+            HStack(spacing: 12) {
+                CheckRing(checked: item.checked)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name).font(.mono(14, weight: .semibold))
+                    Text(item.name).font(.sans(15, .medium))
                         .strikethrough(item.checked)
-                        .foregroundStyle(item.checked ? Color.miseMuted : Color.miseInk)
+                        .foregroundStyle(item.checked ? Color.mFaint : Color.mInk)
+                        .multilineTextAlignment(.leading)
                     let meta = [item.amountText, item.notes ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
-                    if !meta.isEmpty { Text(meta).font(.mono(11)).foregroundStyle(Color.miseMuted) }
+                    if !meta.isEmpty {
+                        Text(meta).font(.sans(12.5)).foregroundStyle(item.checked ? Color.mFaint : Color.mMuted)
+                    }
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 if let price = item.price {
-                    Text(price, format: .currency(code: "USD")).font(.mono(12)).monospacedDigit()
+                    Text(price, format: .currency(code: "USD")).font(.sans(13)).foregroundStyle(Color.mMuted).monospacedDigit()
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityValue(item.checked ? "Got it" : "Still to get")
+        .accessibilityHint("Long-press to remove")
     }
 
-    private var addSection: some View {
-        Section("Add an item") {
-            TextField("Limes", text: $newItem)
-            HStack {
-                TextField("Qty", text: $newQty).keyboardType(.decimalPad)
-                TextField("Unit", text: $newUnit).textInputAutocapitalization(.never)
-            }
-            Button("Add to list") { Task { await addItem() } }
-                .disabled(newItem.trimmingCharacters(in: .whitespaces).isEmpty)
-        }
-    }
-
-    @ViewBuilder
-    private func storeSection(_ list: GroceryList) -> some View {
-        Section {
-            if storesError {
-                Text("Couldn't load your stores.").font(.mono(12)).foregroundStyle(Color.miseMuted)
-            } else if stores.isEmpty {
-                Text("Connect a grocery store in Meal Plan Vault to price lists and fill carts from here.")
-                    .font(.mono(12)).foregroundStyle(Color.miseMuted)
-                Link("Open Meal Plan Vault", destination: VaultConfig.webApp).font(.mono(12))
-            } else {
-                ForEach(stores) { store in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(store.name).font(.mono(14, weight: .semibold))
-                        HStack(spacing: 8) {
-                            if store.canPrice {
-                                Button("Price this list") { Task { await price(store) } }.buttonStyle(MiseButton(.outline))
-                            }
-                            if store.canFillCart {
-                                Button("Add to cart") { Task { await addToCart(store) } }.buttonStyle(MiseButton(.primary))
-                            }
-                            if busyStore == store.id { ProgressView() }
-                        }
-                    }
-                    .disabled(busyStore != nil)
+    private var addItemCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Eyebrow(text: "Add an item")
+            VStack(spacing: 10) {
+                FieldBox { TextField("Limes", text: $newItem) }
+                HStack(spacing: 10) {
+                    FieldBox { TextField("Qty", text: $newQty).keyboardType(.decimalPad) }
+                    FieldBox { TextField("Unit", text: $newUnit).textInputAutocapitalization(.never) }
                 }
-                if let cartLink { Link("Open the cart", destination: cartLink).font(.mono(12)) }
+                Button("Add to list") { Task { await addItem() } }
+                    .buttonStyle(PrimaryButtonStyle(expand: true))
+                    .disabled(newItem.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-        } header: {
-            Text("Stores")
-        } footer: {
-            if !stores.isEmpty { Text("Adding to a cart never checks out or pays.") }
+            .padding(14)
+            .card(radius: 22)
         }
     }
 
-    private func estimatedTotal(_ list: GroceryList) -> Double? {
+    private var storesCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Eyebrow(text: "Stores")
+            VStack(alignment: .leading, spacing: 12) {
+                if let total = estimatedTotal {
+                    HStack {
+                        Text("Estimated total").font(.sans(14)).foregroundStyle(Color.mMuted)
+                        Spacer()
+                        Text(total, format: .currency(code: "USD")).font(.serif(24)).foregroundStyle(Color.mInk).monospacedDigit()
+                    }
+                }
+                if storesError {
+                    Text("Couldn't load your stores.").font(.sans(13)).foregroundStyle(Color.mMuted)
+                } else if stores.isEmpty {
+                    Text("Connect a grocery store in Meal Plan Vault to price this list and fill a cart from here.")
+                        .font(.sans(13.5)).foregroundStyle(Color.mMuted)
+                    Link("Open Meal Plan Vault", destination: VaultConfig.webApp)
+                        .font(.sans(13.5, .semibold)).foregroundStyle(Color.mTerracotta)
+                } else {
+                    ForEach(stores) { store in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(store.name).font(.sans(15, .semibold)).foregroundStyle(Color.mInk)
+                                if busyStore == store.id { ProgressView().padding(.leading, 6) }
+                            }
+                            HStack(spacing: 8) {
+                                if store.canPrice {
+                                    Button("Price this list") { Task { await price(store) } }.buttonStyle(PeachChipStyle())
+                                }
+                                if store.canFillCart {
+                                    Button("Add to cart") { Task { await addToCart(store) } }.buttonStyle(PeachChipStyle())
+                                }
+                            }
+                        }
+                        .disabled(busyStore != nil)
+                    }
+                    if let cartLink {
+                        Link("Open the cart", destination: cartLink)
+                            .font(.sans(13.5, .semibold)).foregroundStyle(Color.mTerracotta)
+                    }
+                    Text("Adding to a cart never checks out or pays.").font(.sans(12)).foregroundStyle(Color.mFaint)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card(radius: 22)
+        }
+    }
+
+    private var estimatedTotal: Double? {
+        guard let list else { return nil }
         if let t = list.estimatedTotal { return t }
         let priced = list.items.filter { !$0.checked }.compactMap(\.price)
         return priced.isEmpty ? nil : priced.reduce(0, +)
@@ -181,7 +246,7 @@ struct ShopView: View {
 
     private func loadAll() async {
         loading = true
-        defer { loading = false }
+        defer { loading = false; loaded = true }
         do {
             lists = try await model.api.groceryLists()
             error = nil

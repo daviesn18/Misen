@@ -10,13 +10,15 @@ struct CookTimer: Identifiable {
 }
 
 /// Full-screen, one step at a time. Opens with mise en place, lists each step's ingredients,
-/// turns times in the text into timers, keeps the screen awake.
+/// turns times in the text into timers, keeps the screen awake. On iPad the ingredients stay
+/// pinned in a side column. Swipe left or right to move between steps.
 struct CookModeView: View {
     let recipeID: String
     let servings: Int?
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var recipe: Recipe?
     @State private var error: String?
     @State private var index = -1
@@ -30,40 +32,60 @@ struct CookModeView: View {
 
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
+    private var wide: Bool { sizeClass == .regular }
     private var factor: Double {
         guard let base = recipe?.servings, base > 0 else { return 1 }
         return Double(serves) / Double(base)
     }
 
     var body: some View {
-        ZStack {
-            Color.miseBG.ignoresSafeArea()
-            VStack(spacing: 0) {
-                topBar
-                if let recipe {
-                    ProgressView(value: progress(recipe))
-                        .tint(Color.miseTeal)
-                        .padding(.vertical, 8)
-                    if !timers.isEmpty { timerBar }
+        VStack(spacing: 0) {
+            topBar
+            if let recipe {
+                ProgressLine(value: progress(recipe)).padding(.horizontal, 18).padding(.top, 10)
+                if !timers.isEmpty { timerBar.padding(.top, 10) }
+                if wide && index >= 0 && index < recipe.steps.count {
+                    HStack(alignment: .top, spacing: 24) {
+                        ScrollView { stepBody(recipe).padding(.vertical, 24) }
+                            .frame(maxWidth: .infinity)
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Eyebrow(text: "Ingredients · serves \(serves)")
+                                checklist(recipe)
+                            }
+                            .padding(.vertical, 24)
+                        }
+                        .frame(width: 340)
+                    }
+                    .padding(.horizontal, 24)
+                } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 20) { stepBody(recipe) }
+                        stepBody(recipe)
+                            .padding(.horizontal, wide ? 48 : 20)
+                            .padding(.vertical, 24)
                             .frame(maxWidth: 760, alignment: .leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 16)
                     }
-                    footer(recipe)
-                } else if let error {
-                    Spacer()
-                    ErrorBox(message: error) { Task { await load() } }
-                    Spacer()
-                } else {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
                 }
+                footer(recipe)
+            } else if let error {
+                Spacer()
+                ErrorBox(message: error) { Task { await load() } }.padding(18)
+                Spacer()
+            } else {
+                Spacer()
+                ProgressView()
+                Spacer()
             }
-            .padding(.horizontal)
         }
+        .screenBackground()
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 40).onEnded { value in
+                guard let recipe, abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
+                if value.translation.width < -60 { advance(recipe) }
+                if value.translation.width > 60 { index = max(-1, index - 1) }
+            }
+        )
         .task { await load() }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear {
@@ -84,15 +106,31 @@ struct CookModeView: View {
 
     private var topBar: some View {
         HStack(spacing: 12) {
-            Text(recipe?.title ?? "Cook").font(.display(18, weight: .semibold)).lineLimit(1).foregroundStyle(Color.miseInk)
-            Spacer()
-            Button(showAll ? "Hide ingredients" : "Ingredients") { showAll.toggle() }
-                .buttonStyle(MiseButton(.ghost))
-            Button("Done") { dismiss() }.buttonStyle(MiseButton(.outline))
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.mInk)
+                    .frame(width: 44, height: 44)
+                    .background(Color.mSurface, in: Circle())
+            }
+            .accessibilityLabel("Close Cook Mode")
+            VStack(alignment: .leading, spacing: 1) {
+                Text(recipe?.title ?? "Cook")
+                    .font(.serif(18, .semibold, relativeTo: .headline))
+                    .foregroundStyle(Color.mInk)
+                    .lineLimit(1)
+                if let recipe {
+                    Text(stepLabel(recipe)).font(.sans(12)).foregroundStyle(Color.mMuted)
+                }
+            }
+            Spacer(minLength: 8)
+            if !wide && index >= 0 && index < (recipe?.steps.count ?? 0) {
+                Button(showAll ? "Hide list" : "Ingredients") { showAll.toggle() }
+                    .buttonStyle(PeachChipStyle())
+            }
         }
+        .padding(.horizontal, 18)
         .padding(.top, 8)
-        .padding(.bottom, 10)
-        .overlay(alignment: .bottom) { Rectangle().fill(Color.miseInk).frame(height: 3) }
     }
 
     private var timerBar: some View {
@@ -101,149 +139,203 @@ struct CookModeView: View {
                 ForEach(timers) { t in
                     Button { cancel(t) } label: {
                         HStack(spacing: 8) {
-                            Text(t.label).font(.mono(12, weight: .semibold))
-                            Text(t.fired ? "Done" : clock(t.end.timeIntervalSince(now))).font(.mono(16, weight: .semibold)).monospacedDigit()
-                            Image(systemName: "xmark").font(.caption)
+                            Image(systemName: t.fired ? "bell.fill" : "timer")
+                            Text(t.label).font(.sans(13, .semibold))
+                            Text(t.fired ? "Done" : clock(t.end.timeIntervalSince(now)))
+                                .font(.sans(16, .bold)).monospacedDigit()
+                            Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).opacity(0.6)
                         }
-                        .padding(.horizontal, 12).frame(minHeight: 44)
-                        .foregroundStyle(Color.miseInk)
-                        .background(t.fired ? Color.miseMustardSoft : Color.miseTealSoft, in: RoundedRectangle(cornerRadius: 4))
-                        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(t.fired ? Color.miseMustard : Color.miseTeal, lineWidth: 2))
+                        .foregroundStyle(t.fired ? Color.white : Color.mInk)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(t.fired ? Color.mTerracotta : Color.mSurface, in: Capsule())
+                        .overlay(Capsule().strokeBorder(t.fired ? Color.clear : Color.mGreen, lineWidth: 2))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(t.fired ? "Dismiss timer \(t.label)" : "Cancel timer \(t.label)")
                 }
             }
+            .padding(.horizontal, 18)
         }
-        .padding(.bottom, 4)
     }
 
     @ViewBuilder
     private func stepBody(_ r: Recipe) -> some View {
         let n = r.steps.count
-        if index < 0 {
-            Eyebrow(text: "Before you start")
-            Text("Mise en place. Get everything out, measured and prepped.")
-                .font(.display(30, weight: .regular)).foregroundStyle(Color.miseInk)
-            if r.servings != nil {
-                HStack {
-                    Stepper("Serves \(serves)", value: $serves, in: 1...100).font(.mono(14))
-                    Text(factor == 1 ? "as written" : "amounts ×\(Kitchen.prettyQty(factor))")
-                        .font(.mono(12)).foregroundStyle(Color.miseMuted)
-                }
-            }
-            let times = [r.prepMinutes.map { "Prep \($0) min" }, r.cookMinutes.map { "Cook \($0) min" }, r.totalMinutes.map { "Total \($0) min" }].compactMap { $0 }
-            if !times.isEmpty { Text(times.joined(separator: " · ")).font(.mono(12)).foregroundStyle(Color.miseMuted) }
-            checklist(r)
-            if let eq = r.equipment { Box(title: "Equipment") { Text(eq).font(.mono(13)) } }
-        } else if index < n {
-            let step = r.steps[index]
-            let uses = Kitchen.uses(in: step, r.ingredients)
-            let durations = Kitchen.durations(in: step)
-            Eyebrow(text: "Step \(index + 1) of \(n)")
-            Text(step)
-                .font(.display(30, weight: .regular))
-                .foregroundStyle(Color.miseInk)
-                .fixedSize(horizontal: false, vertical: true)
-            if !durations.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(durations, id: \.self) { d in
-                        Button { start(d) } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "timer")
-                                Text("Start \(d.label)").font(.mono(14, weight: .semibold))
-                            }
-                            .padding(.horizontal, 14).frame(minHeight: 48)
-                            .foregroundStyle(Color.miseInk)
-                            .background(Color.miseAirSoft, in: RoundedRectangle(cornerRadius: 4))
-                            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.miseAir, lineWidth: 2))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            if !uses.isEmpty {
-                Eyebrow(text: "In this step")
+        VStack(alignment: .leading, spacing: 22) {
+            if index < 0 {
+                Eyebrow(text: "Before you start")
                 VStack(alignment: .leading, spacing: 6) {
-                    ForEach(uses) { i in
-                        let amt = Kitchen.amount(i, factor: factor)
-                        (Text(amt.isEmpty ? "" : "\(amt)  ").bold() + Text(i.name))
-                            .font(.mono(14)).foregroundStyle(Color.miseInk)
+                    Text("Mise en place").font(.serif(wide ? 44 : 36, relativeTo: .largeTitle)).foregroundStyle(Color.mInk)
+                    Text("Get everything out, measured and prepped.").font(.sans(15)).foregroundStyle(Color.mMuted)
+                }
+                if r.servings != nil {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Serves \(serves)").font(.sans(15, .semibold)).foregroundStyle(Color.mInk)
+                            Text(factor == 1 ? "As written" : "Amounts ×\(Kitchen.prettyQty(factor))")
+                                .font(.sans(12.5)).foregroundStyle(Color.mMuted)
+                        }
+                        Spacer()
+                        ServingsStepper(value: $serves)
+                    }
+                    .padding(14)
+                    .card(radius: 16)
+                }
+                let times = [r.prepMinutes.map { "Prep \($0) min" }, r.cookMinutes.map { "Cook \(Kitchen.timeLabel($0))" },
+                             r.totalMinutes.map { "Total \(Kitchen.timeLabel($0))" }].compactMap { $0 }
+                if !times.isEmpty {
+                    Text(times.joined(separator: " · ")).font(.sans(13)).foregroundStyle(Color.mMuted)
+                }
+                checklist(r)
+                if let eq = r.equipment {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Eyebrow(text: "Equipment")
+                        Text(eq).font(.sans(15)).foregroundStyle(Color.mInk)
                     }
                 }
-            }
-            if showAll {
-                Eyebrow(text: "All ingredients")
-                checklist(r)
-            }
-        } else {
-            Eyebrow(text: "All done")
-            Text("\(r.title) is ready. Enjoy it.").font(.display(30, weight: .regular)).foregroundStyle(Color.miseInk)
-            Box(title: "Anything to change next time?") {
-                TextField("Needed 5 more minutes. Use less salt.", text: $note, axis: .vertical)
-                    .font(.mono(13)).lineLimit(2...6).textFieldStyle(.roundedBorder)
-                HStack {
-                    Button("Save to recipe notes") { Task { await saveNote() } }
-                        .buttonStyle(MiseButton(.outline))
-                        .disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    if let noteStatus { Text(noteStatus).font(.mono(11)).foregroundStyle(Color.miseMuted) }
+            } else if index < n {
+                let step = r.steps[index]
+                let uses = Kitchen.uses(in: step, r.ingredients)
+                let durations = Kitchen.durations(in: step)
+                Eyebrow(text: "Step \(index + 1) of \(n)")
+                Text(step)
+                    .font(.serif(wide ? 40 : 30, relativeTo: .title))
+                    .foregroundStyle(Color.mInk)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !durations.isEmpty {
+                    FlowRow {
+                        ForEach(durations, id: \.self) { d in
+                            Button { start(d) } label: {
+                                Label("Start \(d.label)", systemImage: "timer")
+                                    .font(.sans(15, .semibold))
+                                    .foregroundStyle(Color.mBrownText)
+                                    .padding(.horizontal, 16)
+                                    .frame(minHeight: 48)
+                                    .background(Color.mPeach, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
+                if !uses.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Eyebrow(text: "In this step")
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(uses) { i in
+                                let amt = Kitchen.amount(i, factor: factor)
+                                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                    Text(amt.isEmpty ? "—" : amt).font(.sans(15, .bold)).foregroundStyle(Color.mTerracotta)
+                                        .frame(minWidth: 64, alignment: .leading)
+                                    Text(i.name).font(.sans(15)).foregroundStyle(Color.mInk)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 10)
+                                if i.id != uses.last?.id { Divider().overlay(Color.mLine) }
+                            }
+                        }
+                        .card(radius: 16)
+                    }
+                }
+                if showAll && !wide {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Eyebrow(text: "All ingredients")
+                        checklist(r)
+                    }
+                }
+            } else {
+                Eyebrow(text: "All done")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Enjoy it.").font(.serif(wide ? 48 : 40, relativeTo: .largeTitle)).foregroundStyle(Color.mInk)
+                    Text("\(r.title) is ready.").font(.sans(15)).foregroundStyle(Color.mMuted)
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Anything to change next time?").font(.serif(21)).foregroundStyle(Color.mInk)
+                    TextField("Needed 5 more minutes. Use less salt.", text: $note, axis: .vertical)
+                        .font(.sans(15))
+                        .lineLimit(2...6)
+                        .padding(12)
+                        .background(Color.mSurfaceTint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    HStack {
+                        Button("Save to recipe notes") { Task { await saveNote() } }
+                            .buttonStyle(PeachChipStyle())
+                            .disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if let noteStatus { Text(noteStatus).font(.sans(12)).foregroundStyle(Color.mMuted) }
+                    }
+                }
+                .padding(16)
+                .card()
             }
         }
     }
 
     private func checklist(_ r: Recipe) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(spacing: 0) {
             ForEach(r.ingredients) { i in
+                let got = have.contains(i.id)
                 Button {
-                    if have.contains(i.id) { have.remove(i.id) } else { have.insert(i.id) }
+                    if got { have.remove(i.id) } else { have.insert(i.id) }
                 } label: {
                     HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: have.contains(i.id) ? "checkmark.square.fill" : "square")
-                            .foregroundStyle(have.contains(i.id) ? Color.miseMuted : Color.miseTeal)
-                            .font(.title3)
+                        CheckSquare(checked: got)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(i.name).font(.mono(14, weight: .semibold))
-                                .strikethrough(have.contains(i.id))
-                                .foregroundStyle(have.contains(i.id) ? Color.miseMuted : Color.miseInk)
-                            let detail = [Kitchen.amount(i, factor: factor), i.preparation ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
-                            if !detail.isEmpty { Text(detail).font(.mono(12)).foregroundStyle(Color.miseMuted) }
+                            Text(i.name).font(.sans(15, .medium))
+                                .strikethrough(got)
+                                .foregroundStyle(got ? Color.mFaint : Color.mInk)
+                                .multilineTextAlignment(.leading)
+                            let detail = [Kitchen.amount(i, factor: factor), i.preparation ?? ""].filter { !$0.isEmpty }
+                                .joined(separator: " · ")
+                            if !detail.isEmpty { Text(detail).font(.sans(12.5)).foregroundStyle(Color.mMuted) }
                         }
-                        Spacer()
+                        Spacer(minLength: 0)
                     }
-                    .padding(10)
-                    .background(Color.misePaper, in: RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.miseLine))
+                    .padding(.horizontal, 14).padding(.vertical, 11)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(got ? .isSelected : [])
+                if i.id != r.ingredients.last?.id { Divider().overlay(Color.mLine).padding(.leading, 52) }
             }
         }
+        .card(radius: 18)
     }
 
     private func footer(_ r: Recipe) -> some View {
         let n = r.steps.count
         let nextTitle = index < 0 ? (n > 0 ? "Start step 1" : "Finish") : index < n - 1 ? "Next step" : index == n - 1 ? "Finish" : "Close"
         return HStack(spacing: 12) {
-            Button {
-                index = max(-1, index - 1)
-            } label: {
-                Label("Back", systemImage: "chevron.left").frame(maxWidth: .infinity)
+            Button { index = max(-1, index - 1) } label: {
+                Label("Back", systemImage: "chevron.left")
             }
-            .buttonStyle(MiseButton(.ghost))
+            .buttonStyle(SecondaryButtonStyle(expand: true))
             .disabled(index < 0)
-            Button {
-                if index >= n { dismiss() } else { index = (index < 0 && n == 0) ? n : index + 1 }
-            } label: {
-                Label(nextTitle, systemImage: "chevron.right").labelStyle(TrailingIconLabelStyle()).frame(maxWidth: .infinity)
+            Button { advance(r) } label: {
+                HStack(spacing: 6) { Text(nextTitle); Image(systemName: index >= n ? "checkmark" : "chevron.right") }
             }
-            .buttonStyle(MiseButton(.primary))
+            .buttonStyle(PrimaryButtonStyle(expand: true))
         }
-        .controlSize(.large)
-        .padding(.vertical, 12)
-        .overlay(alignment: .top) { Rectangle().fill(Color.miseLine).frame(height: 1) }
+        .padding(.horizontal, 18)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .background(Color.mBackground)
+        .overlay(alignment: .top) { Rectangle().fill(Color.mLine).frame(height: 1) }
     }
 
     // MARK: Logic
+
+    private func advance(_ r: Recipe) {
+        let n = r.steps.count
+        if index >= n { dismiss(); return }
+        index = (index < 0 && n == 0) ? n : index + 1
+    }
+
+    private func stepLabel(_ r: Recipe) -> String {
+        let n = r.steps.count
+        if index < 0 { return "Mise en place" }
+        if index >= n { return "Finished" }
+        return "Step \(index + 1) of \(n)"
+    }
 
     private func progress(_ r: Recipe) -> Double {
         guard !r.steps.isEmpty else { return index >= 0 ? 1 : 0 }
@@ -260,7 +352,7 @@ struct CookModeView: View {
         let timer = CookTimer(label: "Step \(index + 1) · \(d.label)", end: Date().addingTimeInterval(TimeInterval(d.seconds)))
         timers.append(timer)
         let center = UNUserNotificationCenter.current()
-        let title = recipe?.title ?? "Mise"
+        let title = recipe?.title ?? "Misen"
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }
             let content = UNMutableNotificationContent()
@@ -302,8 +394,39 @@ struct CookModeView: View {
     }
 }
 
-struct TrailingIconLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 6) { configuration.title; configuration.icon }
+/// Lays children out left to right, wrapping to new lines (timer buttons).
+struct FlowRow: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, widest: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > 0 && x + size.width > maxWidth {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+            widest = max(widest, x - spacing)
+        }
+        return CGSize(width: min(widest, maxWidth), height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > bounds.minX && x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }

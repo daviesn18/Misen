@@ -146,27 +146,6 @@ enum Kitchen {
 
     // MARK: Week board
 
-    static func kind(_ entry: MealEntry?, _ recipe: Recipe?) -> NightKind {
-        guard let entry else { return .open }
-        if entry.isLeftover { return .leftover }
-        if entry.isNoMeal { return .open }
-        let quickTag = recipe?.tags.contains { $0.range(of: #"air fryer|quick|15 min|30 min"#, options: [.regularExpression, .caseInsensitive]) != nil } ?? false
-        if quickTag { return .quick }
-        if let t = recipe?.totalMinutes, t <= 30 { return .quick }
-        return .cook
-    }
-
-    static func chip(_ entry: MealEntry, _ recipe: Recipe?) -> String? {
-        if entry.isLeftover { return "Leftovers" }
-        if entry.isNoMeal { return "No meal" }
-        let method = recipe?.tags.first {
-            $0.range(of: #"slow cooker|crock|instant pot|pressure|air fryer|sheet pan|grill|smoker|one pot|oven"#,
-                     options: [.regularExpression, .caseInsensitive]) != nil
-        }
-        let parts = [method, recipe?.totalMinutes.map(timeLabel)].compactMap { $0 }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
-
     struct SharedIngredient: Identifiable {
         var id: String { name }
         let name: String

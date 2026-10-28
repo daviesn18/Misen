@@ -1,6 +1,6 @@
 # Misen — project memory
 
-Misen ("Mise" in the UI for now) is a family meal planning app: weekly menu, recipe book, Cook Mode and
+Misen is a family meal planning app: weekly menu, recipe book, Cook Mode and
 shopping list. Tagline: *"A warm kitchen, in its place."* Owner: Nick Davies, a sales engineer who is
 comfortable with JSON, APIs and Postman, and less so with Swift. Explain iOS steps plainly.
 
@@ -33,10 +33,12 @@ comfortable with JSON, APIs and Postman, and less so with Swift. Explain iOS ste
   but not compiled here; Nick builds on his Mac and pastes errors back.
 - **To learn real data shapes, use the Meal Plan Vault connector tools** (`mcp__Meal_Plan_Vault__*`) in the
   session. Read with them freely. Never write test data to learn a shape: it is Nick's real household.
-- `ios/Mise.xcodeproj/project.pbxproj` lists every Swift file explicitly. **Adding or removing a Swift file
-  means updating the pbxproj too**, or the file silently won't compile.
-- The current UI uses interim "Dinner Board" styling (dark teal, monospaced). It is **not** the design.
-  The next phase restyles to `docs/reference/design-handoff.md`.
+- `ios/Mise.xcodeproj/project.pbxproj` lists every Swift and font file explicitly. **After adding or removing a
+  file under `ios/Mise/`, run `python3 ios/genproj.py ios`** to regenerate it, or the file silently won't build.
+- **iOS styling follows the design handoff** (phase C, 2026-10-28): tokens and components live in
+  `ios/Mise/Theme.swift` (`Color.m*`, `Font.serif`/`.sans`, button styles, `RecipeThumb`, `card()`). Use them;
+  don't add one-off colors or fonts. Newsreader and DM Sans are bundled in `ios/Mise/Fonts/` (SIL OFL).
+- The web app (`app/index.html`) still uses the interim "Dinner Board" styling. Restyling it is not scheduled.
 - Older branches (`claude/misen-prd-planning-a2iel3`, `claude/oracle-setup-verify-6mi6cl`,
   `claude/mealie-account-setup-3iqqk6`, `claude/synology-nas-setup-6ogzli`) hold the retired Mealie/Oracle
   work. Read them for history only. **`main` holds the current project** (rev 4 was merged on 2026-10-28).

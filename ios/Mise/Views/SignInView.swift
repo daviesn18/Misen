@@ -8,36 +8,40 @@ struct SignInView: View {
     @State private var error: String?
 
     var body: some View {
-        ZStack {
-            Color.miseBG.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 20) {
-                Spacer()
-                (Text("Mi").font(.display(64, weight: .heavy)).foregroundStyle(Color.miseInk)
-                 + Text("se").font(.display(64, weight: .regular)).italic().foregroundStyle(Color.miseTeal))
-                Rectangle().fill(Color.miseInk).frame(height: 3)
-                Eyebrow(text: "Meal planning & recipe book")
-                Text("Your weekly menu, recipe book, cooking guide and shopping lists, kept in The Meal Plan Vault.")
-                    .font(.mono(14))
-                    .foregroundStyle(Color.miseInk)
-                if let error { ErrorBox(message: error) }
-                Button {
-                    Task { await signIn() }
-                } label: {
-                    HStack {
-                        if working { ProgressView().tint(Color.misePaper) }
-                        Text(working ? "Signing in…" : "Sign in with Meal Plan Vault")
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(MiseButton(.primary))
-                .disabled(working)
-                Link("No account? Create one at mealplanvault.com", destination: VaultConfig.webApp)
-                    .font(.mono(12))
-                Spacer()
+        VStack(alignment: .leading, spacing: 18) {
+            Spacer()
+            RecipeThumb(key: "misen", glyphSize: 30)
+                .frame(width: 72, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Misen").font(.serif(56, relativeTo: .largeTitle)).foregroundStyle(Color.mInk)
+                Text("A warm kitchen, in its place.").font(.serif(22, .italic)).foregroundStyle(Color.mBrownText)
             }
-            .padding(24)
-            .frame(maxWidth: 520)
+            Text("Plan the week's dinners, keep your recipes, cook step by step and shop the list. Everything lives in your Meal Plan Vault.")
+                .font(.sans(15))
+                .foregroundStyle(Color.mMuted)
+                .fixedSize(horizontal: false, vertical: true)
+            if let error { ErrorBox(message: error) }
+            Button {
+                Task { await signIn() }
+            } label: {
+                HStack(spacing: 8) {
+                    if working { ProgressView().tint(.white) }
+                    Text(working ? "Signing in…" : "Sign in with Meal Plan Vault")
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle(expand: true))
+            .disabled(working)
+            Link("New to Meal Plan Vault? Create an account", destination: VaultConfig.webApp)
+                .font(.sans(13, .medium))
+                .foregroundStyle(Color.mTerracotta)
+                .frame(maxWidth: .infinity)
+            Spacer()
         }
+        .padding(28)
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+        .screenBackground()
     }
 
     private func signIn() async {

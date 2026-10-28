@@ -4,9 +4,9 @@ Meal Planning &amp; Recipe Book. *A warm kitchen, in its place.*
 **Picking this up cold?** Read [`CLAUDE.md`](CLAUDE.md), then [`docs/HANDOFF.md`](docs/HANDOFF.md). The plan is
 [`docs/PRD.md`](docs/PRD.md) (rev 4) and the visual spec is [`docs/reference/design-handoff.md`](docs/reference/design-handoff.md).
 
-Mise is a single-page app that runs on top of [The Meal Plan Vault](https://www.mealplanvault.com/help/mcp).
-The Vault is the backend: it stores recipes, meal plans and grocery lists. Mise is the front end people use
-day to day, with the fridge-poster look of the earlier Dinner Board and Shopping List pages.
+Misen is a meal planning app for iPhone, iPad and the web, built on [The Meal Plan Vault](https://www.mealplanvault.com/help/mcp).
+The Vault is the backend: it stores recipes, meal plans and grocery lists. Misen is the front end people use
+day to day.
 
 ## What it does
 
@@ -46,8 +46,8 @@ planned servings. It sorts items into aisles and creates the list linked to that
 
 ## iOS app
 
-`ios/` is a native SwiftUI app (iOS 17+, iPhone and iPad) with the same four areas: Week, Recipes,
-Cook mode and Shop. Claude's connector bridge isn't available on a phone, so the app signs in to
+`ios/` is a native SwiftUI app (iOS 17+, iPhone and iPad) with four tabs: Menu, Recipes, Cook and
+Shopping, styled to the design handoff (cream, terracotta, Newsreader + DM Sans). Claude's connector bridge isn't available on a phone, so the app signs in to
 Meal Plan Vault itself and calls its MCP server at `https://www.mealplanvault.com/mcp`:
 
 - **Sign-in:** OAuth 2.1 with PKCE. The app finds the Vault's authorization server from the MCP endpoint
@@ -77,7 +77,9 @@ Settings › General › VPN & Device Management.
 | `Mise/Vault/VaultAPI.swift` | Typed calls for each Meal Plan Vault tool |
 | `Mise/Vault/Models.swift` | Recipes, meal plan entries, grocery lists, stores, dates |
 | `Mise/Kitchen.swift` | Quantities, aisles, ingredient parsing, timers, list building |
-| `Mise/Views/*` | Sign-in, Week, Recipes (detail + add), Cook mode, Shop |
+| `Mise/Theme.swift` | Design tokens and shared components |
+| `Mise/Views/*` | Sign-in, Menu, Recipes (detail + add), Cook tab, Cook Mode, Shopping |
+| `genproj.py` | Regenerates `Mise.xcodeproj` after adding or removing files: `python3 ios/genproj.py ios` |
 
 ## Known gaps
 
@@ -85,6 +87,6 @@ Settings › General › VPN & Device Management.
   Mise reads those fields defensively (both camelCase and snake_case). Check the Week and Shop views once
   real entries exist.
 - Recipe photos aren't shown: the artifact sandbox blocks images from other hosts.
-- Both apps use interim "Dinner Board" styling. Restyling to the design handoff is the next phase.
+- The iOS restyle (phase C) is written but not yet built; the web app keeps the interim "Dinner Board" styling.
 - The iOS app builds and runs, and sign-in to Meal Plan Vault works. Grocery lists and store actions haven't been
   exercised against real data yet.

@@ -27,6 +27,7 @@ struct Recipe: Identifiable, Hashable {
     var cookMinutes: Int?
     var difficulty: String?
     var webURL: URL?
+    var heroImageURL: URL?
     var sourceURL: URL?
     var sourceName: String?
     var tags: [String]
@@ -45,6 +46,7 @@ struct Recipe: Identifiable, Hashable {
         cookMinutes = j.first("cookTimeMinutes", "cook_time_minutes")?.int
         difficulty = j.first("difficultyLevel", "difficulty")?.string
         webURL = j["url"]?.string.flatMap(URL.init(string:))
+        heroImageURL = j.first("heroImageUrl", "hero_image_url", "imageUrl", "image_url")?.string.flatMap(URL.init(string:))
         sourceURL = j.first("sourceUrl", "source_url")?.string.flatMap(URL.init(string:))
         sourceName = j.first("sourceName", "source_name")?.string
         tags = j["tags"]?.array?.compactMap { $0.string ?? $0["name"]?.string } ?? []
@@ -249,5 +251,6 @@ enum Day {
     static func days(from monday: Date) -> [Date] { (0..<7).map { add($0, to: monday) } }
     static func short(_ d: Date) -> String { shortFormatter.string(from: d) }
     static func weekday(_ d: Date) -> String { weekdayFormatter.string(from: d) }
+    static func dayNumber(_ d: Date) -> String { String(calendar.component(.day, from: d)) }
     static func range(_ monday: Date) -> String { "\(short(monday)) – \(short(add(6, to: monday)))" }
 }

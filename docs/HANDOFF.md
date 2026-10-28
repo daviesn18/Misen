@@ -32,30 +32,24 @@ The retired branches share no history with `main`. They stay as reference; nothi
 | **iOS app** | `ios/Mise.xcodeproj`, SwiftUI, iOS 17+. OAuth sign-in to the Vault, MCP client, Week, Recipes (view, add, import, notes), Cook Mode (mise en place, steps, timers, notifications, finish notes), Shop (aisles, check-off, stores). **Built and running on Nick's iPhone**; sign-in and recipe loading confirmed. |
 | **Cook Mode** | Ingredient highlighting in step text was removed on request, on both clients. |
 
-Styling on both clients is the interim "Dinner Board" look (dark teal, Fraunces-style serif, monospaced
-body). It is **not** the design.
+| **Phase C (iOS restyle)** | Written 2026-10-28, **not yet built**. Cream/terracotta/herb-green palette with a warm dark mode, Newsreader + DM Sans bundled, tabs **Menu · Recipes · Cook · Shopping**, two-week Menu with stat cards and Swap/Remove, editorial recipe cards with filter chips (All, Quick, Slow-cook, Air fryer, Meal prep, Breakfast), add sheet (link or by hand), servings scaler on recipes, Cook tab, restyled Cook Mode (iPad ingredient column, swipe between steps), Shopping with progress bar and check rings. |
+
+The web app still uses the interim "Dinner Board" look (dark teal, monospaced). Restyling it is not scheduled.
 
 ---
 
 ## What's next
 
-### Phase C: restyle the iOS app to the design handoff
+### Phase C: build, fix, and check against real data
 
-The spec is [`reference/design-handoff.md`](reference/design-handoff.md); PRD §4 lists the screen changes.
-In order:
+The restyle is written but has never been compiled. Next session:
 
-1. `Theme.swift`: replace the palette with the handoff tokens (cream, terracotta, herb green, brown).
-   Embed Newsreader and DM Sans (add the font files to the target, list them under `UIAppFonts`, and add them
-   to the pbxproj Resources phase).
-2. Tabs become **Menu · Recipes · Cook · Shopping**. Add a Cook tab that opens on tonight's dinner.
-3. Menu: This Week / Next Week toggle, stat cards, day cards with thumbnail gradients, Swap and Remove.
-4. Recipes: editorial split cards, tag chips, + FAB with the add sheet.
-5. Recipe photos from `heroImageUrl` when present, gradients otherwise.
-6. Shopping: progress bar, round check rings, inset aisle cards.
-7. Before restyling Menu and Shopping, plan one real week and create one real list, then confirm the
-   response shapes with the connector tools (PRD §3).
-
-Any new Swift file must also be added to `ios/Mise.xcodeproj/project.pbxproj` (see CLAUDE.md).
+1. Nick pulls the branch, opens `ios/Mise.xcodeproj`, builds, and pastes any compile errors. Expect a few.
+2. Check on device, in light and dark mode: Menu (this week has real dinners and kids' lunches), a recipe's
+   servings scaler, Cook Mode, and the Cook tab.
+3. **Shopping is still unverified against real data:** no grocery list existed when it was written. Build one
+   from the Menu, then confirm the item shape with `mcp__Meal_Plan_Vault__get_grocery_list`.
+4. Recipe photos load from `heroImageUrl`, but every recipe checked so far has none, so gradients show.
 
 ### Then
 

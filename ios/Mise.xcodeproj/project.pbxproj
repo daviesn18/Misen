@@ -10,6 +10,13 @@
 		A691AB7E8DC7D88F68F46DE9 /* Kitchen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83FD2CD6B52C3A52D7DB2EB5 /* Kitchen.swift */; };
 		683A0709E3E2AADFF59A8AFC /* MiseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C9297BDE8B787E912D3899 /* MiseApp.swift */; };
 		0C43C71B7E8AD94C35C9476D /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61B102C6DA2258BD7801E49 /* Theme.swift */; };
+		556769C0715698ED4F9CE587 /* DMSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E9D7ECAD61C09DE16316E1BA /* DMSans-Bold.ttf */; };
+		3D791FF0F34CD7C876EA6D7B /* DMSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6F9A5F349BF2065EA03BC38F /* DMSans-Medium.ttf */; };
+		A2E25942B9BDE9118D913D7A /* DMSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F1C95F2A9899650B5A41F01 /* DMSans-Regular.ttf */; };
+		AED098372DDA6D43D48881EC /* DMSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 40428C283790FDF60AB1BA05 /* DMSans-SemiBold.ttf */; };
+		6E3A469DA2621D75DD8632A4 /* Newsreader-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 876E10CA8A8DB1B637DD5778 /* Newsreader-Italic.ttf */; };
+		91212EE7928D225ADBD5D4B9 /* Newsreader-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 83275D57770933346C5865A5 /* Newsreader-Regular.ttf */; };
+		0D9DF9F8CC7CD04C5C2A3216 /* Newsreader-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 17EBA6CBDF5B846231DF39A9 /* Newsreader-SemiBold.ttf */; };
 		13C99C5764853320FB4F352B /* Auth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78FE41BC3A9EF8DFC0030EE2 /* Auth.swift */; };
 		274BD8924B2F439A496858E7 /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D039B2D56412C02501C6FFE /* JSON.swift */; };
 		AAF38778C965C2BB17258335 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97F6FA2F43790372DABC85B3 /* Keychain.swift */; };
@@ -17,16 +24,24 @@
 		C339655D57562D0E503B5EE9 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FDF775984CD81990E5A1900 /* Models.swift */; };
 		815E2AA06A94039E1BF1FCB4 /* VaultAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B34FDAE0EEAAF160D633687 /* VaultAPI.swift */; };
 		121209C6510DB16B996C51AD /* CookModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA0FC98F2FDD6D3245E216E /* CookModeView.swift */; };
+		BF42EA1CDDCB7894A94E6B5B /* CookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A485F831FD07D0674C1180 /* CookView.swift */; };
+		927603808FC63AF544BFC37C /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6331C0B45B48DC9630B5D8F /* MenuView.swift */; };
 		F41B40CC6246011BDCDA7E1E /* RecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63D35C8648BC1D91B7E48A60 /* RecipesView.swift */; };
 		87216B81C2F7B716287461E0 /* ShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B7C648006BF0FE54E49DAFA /* ShopView.swift */; };
 		AE926AD8F166851FF56DB51F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00B0F01AF9A51154C8A55B /* SignInView.swift */; };
-		FD97A0133DBCAF1616D56FDA /* WeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C854E2A942BB5FC784B4D5E2 /* WeekView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		83FD2CD6B52C3A52D7DB2EB5 /* Kitchen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kitchen.swift; sourceTree = "<group>"; };
 		D7C9297BDE8B787E912D3899 /* MiseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiseApp.swift; sourceTree = "<group>"; };
 		F61B102C6DA2258BD7801E49 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		E9D7ECAD61C09DE16316E1BA /* DMSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = DMSans-Bold.ttf; sourceTree = "<group>"; };
+		6F9A5F349BF2065EA03BC38F /* DMSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = DMSans-Medium.ttf; sourceTree = "<group>"; };
+		9F1C95F2A9899650B5A41F01 /* DMSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = DMSans-Regular.ttf; sourceTree = "<group>"; };
+		40428C283790FDF60AB1BA05 /* DMSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = DMSans-SemiBold.ttf; sourceTree = "<group>"; };
+		876E10CA8A8DB1B637DD5778 /* Newsreader-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Newsreader-Italic.ttf; sourceTree = "<group>"; };
+		83275D57770933346C5865A5 /* Newsreader-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Newsreader-Regular.ttf; sourceTree = "<group>"; };
+		17EBA6CBDF5B846231DF39A9 /* Newsreader-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Newsreader-SemiBold.ttf; sourceTree = "<group>"; };
 		78FE41BC3A9EF8DFC0030EE2 /* Auth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Auth.swift; sourceTree = "<group>"; };
 		1D039B2D56412C02501C6FFE /* JSON.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSON.swift; sourceTree = "<group>"; };
 		97F6FA2F43790372DABC85B3 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
@@ -34,10 +49,11 @@
 		7FDF775984CD81990E5A1900 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		2B34FDAE0EEAAF160D633687 /* VaultAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultAPI.swift; sourceTree = "<group>"; };
 		3DA0FC98F2FDD6D3245E216E /* CookModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookModeView.swift; sourceTree = "<group>"; };
+		A9A485F831FD07D0674C1180 /* CookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookView.swift; sourceTree = "<group>"; };
+		F6331C0B45B48DC9630B5D8F /* MenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuView.swift; sourceTree = "<group>"; };
 		63D35C8648BC1D91B7E48A60 /* RecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipesView.swift; sourceTree = "<group>"; };
 		9B7C648006BF0FE54E49DAFA /* ShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopView.swift; sourceTree = "<group>"; };
 		FA00B0F01AF9A51154C8A55B /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
-		C854E2A942BB5FC784B4D5E2 /* WeekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekView.swift; sourceTree = "<group>"; };
 		F5BF48AA40CAD7891EB709FC /* Mise.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mise.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -71,6 +87,7 @@
 		4815E8BA076BC7E930F44831 /* Mise */ = {
 			isa = PBXGroup;
 			children = (
+				245E38A9131F3D9B0B936200 /* Fonts */,
 				AF8B0B73C44257D78DB44167 /* Vault */,
 				3CFFCE6CA245ADF5FC27600D /* Views */,
 				83FD2CD6B52C3A52D7DB2EB5 /* Kitchen.swift */,
@@ -78,6 +95,19 @@
 				F61B102C6DA2258BD7801E49 /* Theme.swift */,
 			);
 			path = Mise; sourceTree = "<group>";
+		};
+		245E38A9131F3D9B0B936200 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				E9D7ECAD61C09DE16316E1BA /* DMSans-Bold.ttf */,
+				6F9A5F349BF2065EA03BC38F /* DMSans-Medium.ttf */,
+				9F1C95F2A9899650B5A41F01 /* DMSans-Regular.ttf */,
+				40428C283790FDF60AB1BA05 /* DMSans-SemiBold.ttf */,
+				876E10CA8A8DB1B637DD5778 /* Newsreader-Italic.ttf */,
+				83275D57770933346C5865A5 /* Newsreader-Regular.ttf */,
+				17EBA6CBDF5B846231DF39A9 /* Newsreader-SemiBold.ttf */,
+			);
+			path = Fonts; sourceTree = "<group>";
 		};
 		AF8B0B73C44257D78DB44167 /* Vault */ = {
 			isa = PBXGroup;
@@ -95,10 +125,11 @@
 			isa = PBXGroup;
 			children = (
 				3DA0FC98F2FDD6D3245E216E /* CookModeView.swift */,
+				A9A485F831FD07D0674C1180 /* CookView.swift */,
+				F6331C0B45B48DC9630B5D8F /* MenuView.swift */,
 				63D35C8648BC1D91B7E48A60 /* RecipesView.swift */,
 				9B7C648006BF0FE54E49DAFA /* ShopView.swift */,
 				FA00B0F01AF9A51154C8A55B /* SignInView.swift */,
-				C854E2A942BB5FC784B4D5E2 /* WeekView.swift */,
 			);
 			path = Views; sourceTree = "<group>";
 		};
@@ -160,6 +191,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				556769C0715698ED4F9CE587 /* DMSans-Bold.ttf in Resources */,
+				3D791FF0F34CD7C876EA6D7B /* DMSans-Medium.ttf in Resources */,
+				A2E25942B9BDE9118D913D7A /* DMSans-Regular.ttf in Resources */,
+				AED098372DDA6D43D48881EC /* DMSans-SemiBold.ttf in Resources */,
+				6E3A469DA2621D75DD8632A4 /* Newsreader-Italic.ttf in Resources */,
+				91212EE7928D225ADBD5D4B9 /* Newsreader-Regular.ttf in Resources */,
+				0D9DF9F8CC7CD04C5C2A3216 /* Newsreader-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -180,10 +218,11 @@
 				C339655D57562D0E503B5EE9 /* Models.swift in Sources */,
 				815E2AA06A94039E1BF1FCB4 /* VaultAPI.swift in Sources */,
 				121209C6510DB16B996C51AD /* CookModeView.swift in Sources */,
+				BF42EA1CDDCB7894A94E6B5B /* CookView.swift in Sources */,
+				927603808FC63AF544BFC37C /* MenuView.swift in Sources */,
 				F41B40CC6246011BDCDA7E1E /* RecipesView.swift in Sources */,
 				87216B81C2F7B716287461E0 /* ShopView.swift in Sources */,
 				AE926AD8F166851FF56DB51F /* SignInView.swift in Sources */,
-				FD97A0133DBCAF1616D56FDA /* WeekView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,7 +292,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Mise;
+				INFOPLIST_KEY_CFBundleDisplayName = Misen;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -282,7 +321,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Mise;
+				INFOPLIST_KEY_CFBundleDisplayName = Misen;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
