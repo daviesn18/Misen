@@ -9,7 +9,7 @@ struct CookTimer: Identifiable {
     var fired = false
 }
 
-/// Full-screen, one step at a time. Opens with mise en place, highlights each step's ingredients,
+/// Full-screen, one step at a time. Opens with mise en place, lists each step's ingredients,
 /// turns times in the text into timers, keeps the screen awake.
 struct CookModeView: View {
     let recipeID: String
@@ -141,7 +141,7 @@ struct CookModeView: View {
             let uses = Kitchen.uses(in: step, r.ingredients)
             let durations = Kitchen.durations(in: step)
             Eyebrow(text: "Step \(index + 1) of \(n)")
-            Text(highlighted(step, r.ingredients))
+            Text(step)
                 .font(.display(30, weight: .regular))
                 .foregroundStyle(Color.miseInk)
                 .fixedSize(horizontal: false, vertical: true)
@@ -248,24 +248,6 @@ struct CookModeView: View {
     private func progress(_ r: Recipe) -> Double {
         guard !r.steps.isEmpty else { return index >= 0 ? 1 : 0 }
         return min(1, max(0, Double(index + 1) / Double(r.steps.count)))
-    }
-
-    private func highlighted(_ text: String, _ ingredients: [Ingredient]) -> AttributedString {
-        var out = AttributedString(text)
-        let words = Set(ingredients.flatMap(Kitchen.matchWords)).sorted { $0.count > $1.count }
-        var marked: [Range<AttributedString.Index>] = []
-        for word in words {
-            var from = out.startIndex
-            while from < out.endIndex, let r = out[from...].range(of: word, options: .caseInsensitive) {
-                from = r.upperBound
-                let startsWord = r.lowerBound == out.startIndex
-                    || !out.characters[out.characters.index(before: r.lowerBound)].isLetter
-                guard startsWord, !marked.contains(where: { $0.overlaps(r) }) else { continue }
-                marked.append(r)
-                out[r].backgroundColor = Color.miseTealSoft
-            }
-        }
-        return out
     }
 
     private func clock(_ seconds: TimeInterval) -> String {
