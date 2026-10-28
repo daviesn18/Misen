@@ -7,19 +7,19 @@ Read [`../CLAUDE.md`](../CLAUDE.md) first, then [`PRD.md`](PRD.md) for the plan.
 
 ## Read this first: which branch
 
-**Current work is on `claude/zealous-goodall-qa7n1z`.** It starts from the original `main` stub and holds
-the rev 4 project: the web app, the iOS app and these docs. It shares no code with the older branches.
+**`main` is the current project.** The rev 4 work (web app, iOS app, these docs) was built on
+`claude/zealous-goodall-qa7n1z` and fast-forwarded into `main` on 2026-10-28. Branch new work from `main`.
 
 ```
-main                                   ← two-line stub, never updated
-├── claude/zealous-goodall-qa7n1z      ← CURRENT: Meal Plan Vault, web + iOS apps, rev 4 docs
+main                                   ← CURRENT: Meal Plan Vault, web + iOS apps, rev 4 docs
+├── claude/zealous-goodall-qa7n1z      ← same history as main (merged)
 ├── claude/misen-prd-planning-a2iel3   ← RETIRED: Mealie + Companion + MCP server code
 │    └── claude/oracle-setup-verify-6mi6cl   ← RETIRED: Oracle deploy, rev 3 PRD
 │         └── claude/mealie-account-setup-3iqqk6  ← RETIRED: last deploy fixes
 └── claude/synology-nas-setup-6ogzli   ← RETIRED: NAS vs VPS notes
 ```
 
-No PR has been opened or merged. Merging this branch to `main` is an open decision (below).
+The retired branches share no history with `main`. They stay as reference; nothing has been deleted.
 
 ---
 
@@ -102,7 +102,6 @@ The Oracle account is **Pay As You Go**, so these may still be billing:
 
 ## Open decisions
 
-- **Merge to `main`?** `main` is still the stub. Merging this branch makes the repo read correctly to anyone
-  new. The retired branches can stay as history or be deleted. Nick's call; nothing has been deleted.
+- **Delete the retired branches?** They can stay as history or be removed. Nick's call; nothing has been deleted.
 - **App name:** the UI says "Mise", the repo and docs say "Misen". Pick one in phase C.
 - The product questions in PRD §6 (Swap behavior, empty Cook tab, dark mode, photo import).

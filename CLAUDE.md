@@ -39,4 +39,4 @@ comfortable with JSON, APIs and Postman, and less so with Swift. Explain iOS ste
   The next phase restyles to `docs/reference/design-handoff.md`.
 - Older branches (`claude/misen-prd-planning-a2iel3`, `claude/oracle-setup-verify-6mi6cl`,
   `claude/mealie-account-setup-3iqqk6`, `claude/synology-nas-setup-6ogzli`) hold the retired Mealie/Oracle
-  work. Read them for history only. `main` is still the original two-line stub.
+  work. Read them for history only. **`main` holds the current project** (rev 4 was merged on 2026-10-28).
