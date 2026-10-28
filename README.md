@@ -87,6 +87,6 @@ Settings › General › VPN & Device Management.
   Mise reads those fields defensively (both camelCase and snake_case). Check the Week and Shop views once
   real entries exist.
 - Recipe photos aren't shown: the artifact sandbox blocks images from other hosts.
-- The iOS restyle (phase C) is written but not yet built; the web app keeps the interim "Dinner Board" styling.
+- The web app keeps the interim "Dinner Board" styling; only the iOS app follows the design handoff.
 - The iOS app builds and runs, and sign-in to Meal Plan Vault works. Grocery lists and store actions haven't been
   exercised against real data yet.

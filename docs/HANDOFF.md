@@ -32,7 +32,7 @@ The retired branches share no history with `main`. They stay as reference; nothi
 | **iOS app** | `ios/Mise.xcodeproj`, SwiftUI, iOS 17+. OAuth sign-in to the Vault, MCP client, Week, Recipes (view, add, import, notes), Cook Mode (mise en place, steps, timers, notifications, finish notes), Shop (aisles, check-off, stores). **Built and running on Nick's iPhone**; sign-in and recipe loading confirmed. |
 | **Cook Mode** | Ingredient highlighting in step text was removed on request, on both clients. |
 
-| **Phase C (iOS restyle)** | Written 2026-10-28, **not yet built**. Cream/terracotta/herb-green palette with a warm dark mode, Newsreader + DM Sans bundled, tabs **Menu · Recipes · Cook · Shopping**, two-week Menu with stat cards and Swap/Remove, editorial recipe cards with filter chips (All, Quick, Slow-cook, Air fryer, Meal prep, Breakfast), add sheet (link or by hand), servings scaler on recipes, Cook tab, restyled Cook Mode (iPad ingredient column, swipe between steps), Shopping with progress bar and check rings. |
+| **Phase C (iOS restyle)** | Written and **built cleanly** on 2026-10-28. Cream/terracotta/herb-green palette with a warm dark mode, Newsreader + DM Sans bundled, tabs **Menu · Recipes · Cook · Shopping**, two-week Menu with stat cards and Swap/Remove, editorial recipe cards with filter chips (All, Quick, Slow-cook, Air fryer, Meal prep, Breakfast), add sheet (link or by hand), servings scaler on recipes, Cook tab, restyled Cook Mode (iPad ingredient column, swipe between steps), Shopping with progress bar and check rings. |
 
 The web app still uses the interim "Dinner Board" look (dark teal, monospaced). Restyling it is not scheduled.
 
@@ -40,15 +40,15 @@ The web app still uses the interim "Dinner Board" look (dark teal, monospaced). 
 
 ## What's next
 
-### Phase C: build, fix, and check against real data
+### Check phase C against real data
 
-The restyle is written but has never been compiled. Next session:
+The restyle builds. Still worth checking on device, in light and dark mode:
 
-1. Nick pulls the branch, opens `ios/Mise.xcodeproj`, builds, and pastes any compile errors. Expect a few.
-2. Check on device, in light and dark mode: Menu (this week has real dinners and kids' lunches), a recipe's
-   servings scaler, Cook Mode, and the Cook tab.
-3. **Shopping is still unverified against real data:** no grocery list existed when it was written. Build one
-   from the Menu, then confirm the item shape with `mcp__Meal_Plan_Vault__get_grocery_list`.
+1. Menu with this week's real dinners and kids' lunches; Swap and Remove.
+2. A recipe's servings scaler, then Cook Mode and the Cook tab.
+3. **Shopping is unverified against real data:** no grocery list existed when it was written. Build one
+   from the Menu (**⋯ → Build shopping list**), then confirm the item shape with
+   `mcp__Meal_Plan_Vault__get_grocery_list`.
 4. Recipe photos load from `heroImageUrl`, but every recipe checked so far has none, so gradients show.
 
 ### Then

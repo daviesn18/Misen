@@ -163,7 +163,7 @@ Cook Mode keeps ingredients in a side column. Same views, different container.
 | --- | --- | --- |
 | A | Web prototype on the Vault (Artifact + connector) | **Done** |
 | B | iOS app on the Vault: sign-in, MCP client, Menu, Recipes, Cook Mode, Shopping | **Done.** Built and running on Nick's iPhone; sign-in and recipe reads confirmed |
-| C | **Restyle to the design handoff.** Theme tokens, embedded fonts, Cook tab replaces Pantry, two-week Menu, editorial recipe cards, add sheet, placeholder gradients, recipe photos | **Code written 2026-10-28, awaiting first build on Nick's Mac** |
+| C | **Restyle to the design handoff.** Theme tokens, embedded fonts, Cook tab replaces Pantry, two-week Menu, editorial recipe cards, add sheet, placeholder gradients, recipe photos | **Done.** Built cleanly on Nick's Mac on the first try (2026-10-28) |
 | D | iPad split view, Cook Mode ingredient column | Not started |
 | E | Dry run: one real week planned with Claude, shopped and cooked in Misen | Not started |
 | Later | Offline cache for Shopping, weekly reminder, dark mode for the warm palette, "Snap a photo" import | — |
