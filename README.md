@@ -1,5 +1,8 @@
-# Mise
-Meal Planning &amp; Recipe Book
+# Misen
+Meal Planning &amp; Recipe Book. *A warm kitchen, in its place.*
+
+**Picking this up cold?** Read [`CLAUDE.md`](CLAUDE.md), then [`docs/HANDOFF.md`](docs/HANDOFF.md). The plan is
+[`docs/PRD.md`](docs/PRD.md) (rev 4) and the visual spec is [`docs/reference/design-handoff.md`](docs/reference/design-handoff.md).
 
 Mise is a single-page app that runs on top of [The Meal Plan Vault](https://www.mealplanvault.com/help/mcp).
 The Vault is the backend: it stores recipes, meal plans and grocery lists. Mise is the front end people use
@@ -82,7 +85,6 @@ Settings › General › VPN & Device Management.
   Mise reads those fields defensively (both camelCase and snake_case). Check the Week and Shop views once
   real entries exist.
 - Recipe photos aren't shown: the artifact sandbox blocks images from other hosts.
-- The iOS app hasn't been compiled or run yet: it was written in an environment without Xcode or network
-  access to mealplanvault.com. Expect a round of small build fixes on first open in Xcode.
-- iOS sign-in assumes Meal Plan Vault allows app registration with a `mise://` redirect, as MCP clients
-  usually do. If sign-in says the Vault didn't accept Mise as an app, its sign-in rules need a closer look.
+- Both apps use interim "Dinner Board" styling. Restyling to the design handoff is the next phase.
+- The iOS app builds and runs, and sign-in to Meal Plan Vault works. Grocery lists and store actions haven't been
+  exercised against real data yet.
