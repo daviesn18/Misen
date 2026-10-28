@@ -41,9 +41,55 @@ planned servings. It sorts items into aisles and creates the list linked to that
 - **Source:** [`app/index.html`](app/index.html) is a single self-contained file. Republish it as an
   Artifact with the `mcp` capability above. Opened outside Claude it shows an example week.
 
+## iOS app
+
+`ios/` is a native SwiftUI app (iOS 17+, iPhone and iPad) with the same four areas: Week, Recipes,
+Cook mode and Shop. Claude's connector bridge isn't available on a phone, so the app signs in to
+Meal Plan Vault itself and calls its MCP server at `https://www.mealplanvault.com/mcp`:
+
+- **Sign-in:** OAuth 2.1 with PKCE. The app finds the Vault's authorization server from the MCP endpoint
+  (`/.well-known/oauth-protected-resource`, then `/.well-known/oauth-authorization-server`). It registers
+  itself as a public client named "Mise for iOS" with redirect `mise://oauth/callback` and signs in through
+  the system web sheet. Tokens are kept in the Keychain and refreshed automatically.
+- **MCP:** `initialize`, then `tools/call` over Streamable HTTP. Replies can be JSON or an event stream.
+  The `Mcp-Session-Id` is kept for the session. The same tools as the table above are used.
+- **Cook mode:** the screen stays awake. Timers beep and buzz in the app, and also post a local
+  notification so you hear them with the phone locked.
+
+### Build it (needs a Mac with Xcode 15 or later)
+
+```bash
+brew install xcodegen
+```
+
+```bash
+cd ios && xcodegen
+```
+
+```bash
+open Mise.xcodeproj
+```
+
+In Xcode, pick your team under **Signing & Capabilities** and change the bundle id
+(`com.example.mise`) to one you own. Then run on a simulator or your iPhone. A free Apple ID can install
+it on your own phone; TestFlight or the App Store needs a paid developer account.
+
+| File | What it holds |
+| --- | --- |
+| `Mise/Vault/Auth.swift` | OAuth discovery, client registration, PKCE sign-in, token refresh |
+| `Mise/Vault/MCPClient.swift` | MCP JSON-RPC client (Streamable HTTP) |
+| `Mise/Vault/VaultAPI.swift` | Typed calls for each Meal Plan Vault tool |
+| `Mise/Vault/Models.swift` | Recipes, meal plan entries, grocery lists, stores, dates |
+| `Mise/Kitchen.swift` | Quantities, aisles, ingredient parsing, timers, list building |
+| `Mise/Views/*` | Sign-in, Week, Recipes (detail + add), Cook mode, Shop |
+
 ## Known gaps
 
 - The meal plan entry, grocery list and store connection responses were empty when this was built, so
   Mise reads those fields defensively (both camelCase and snake_case). Check the Week and Shop views once
   real entries exist.
 - Recipe photos aren't shown: the artifact sandbox blocks images from other hosts.
+- The iOS app hasn't been compiled or run yet: it was written in an environment without Xcode or network
+  access to mealplanvault.com. Expect a round of small build fixes on first open in Xcode.
+- iOS sign-in assumes Meal Plan Vault allows app registration with a `mise://` redirect, as MCP clients
+  usually do. If sign-in says the Vault didn't accept Mise as an app, its sign-in rules need a closer look.
