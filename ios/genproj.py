@@ -5,8 +5,13 @@ def uid(*parts): return hashlib.md5("|".join(parts).encode()).hexdigest()[:24].u
 
 # collect swift files grouped by folder
 files = {}
-for d, _, fs in os.walk(src):
+catalogs = []
+for d, dirs, fs in os.walk(src):
     rel = os.path.relpath(d, src)
+    # asset catalogs are one opaque resource each; don't descend into them
+    for sub in [x for x in dirs if x.endswith(".xcassets")]:
+        catalogs.append(os.path.join(rel, sub) if rel != "." else sub)
+    dirs[:] = [x for x in dirs if not x.endswith(".xcassets")]
     for f in sorted(fs):
         if f.endswith(".swift") or f.endswith(".ttf"):
             files.setdefault("" if rel == "." else rel, []).append(f)
@@ -37,6 +42,14 @@ for folder in sorted(files):
         sections["PBXBuildFile"].append(f'\t\t{bf} /* {f} in {phase} */ = {{isa = PBXBuildFile; fileRef = {fr} /* {f} */; }};')
         group_children[gid].append((fr, f))
         (res_ids if is_font else build_ids).append((bf, f))
+for path in catalogs:
+    folder, name = os.path.split(path)
+    gid = MISE if folder == "" else uid("group", folder)
+    fr, bf = uid("file", path), uid("build", path)
+    sections["PBXFileReference"].append(f'\t\t{fr} /* {name} */ = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = {name}; sourceTree = "<group>"; }};')
+    sections["PBXBuildFile"].append(f'\t\t{bf} /* {name} in Resources */ = {{isa = PBXBuildFile; fileRef = {fr} /* {name} */; }};')
+    group_children.setdefault(gid, []).append((fr, name))
+    res_ids.append((bf, name))
 sections["PBXFileReference"].append(f'\t\t{PRODUCT} /* Mise.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mise.app; sourceTree = BUILT_PRODUCTS_DIR; }};')
 
 # subgroups listed first inside Mise group
@@ -116,7 +129,7 @@ pdebug = dict(common, **{"DEBUG_INFORMATION_FORMAT": "dwarf", "ENABLE_TESTABILIT
 prelease = dict(common, **{"DEBUG_INFORMATION_FORMAT": '"dwarf-with-dsym"', "ENABLE_NS_ASSERTIONS": "NO", "MTL_ENABLE_DEBUG_INFO": "NO",
  "SWIFT_COMPILATION_MODE": "wholemodule", "VALIDATE_PRODUCT": "YES"})
 target = {
- "CODE_SIGN_STYLE": "Automatic", "CURRENT_PROJECT_VERSION": "1", "DEVELOPMENT_TEAM": '""', "ENABLE_PREVIEWS": "YES",
+ "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon", "CODE_SIGN_STYLE": "Automatic", "CURRENT_PROJECT_VERSION": "1", "DEVELOPMENT_TEAM": '""', "ENABLE_PREVIEWS": "YES",
  "GENERATE_INFOPLIST_FILE": "YES", "INFOPLIST_KEY_CFBundleDisplayName": "Misen",
  "INFOPLIST_KEY_LSApplicationCategoryType": '"public.app-category.food-and-drink"',
  "INFOPLIST_KEY_UIApplicationSceneManifest_Generation": "YES", "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents": "YES",

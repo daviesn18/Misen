@@ -29,6 +29,7 @@
 		F41B40CC6246011BDCDA7E1E /* RecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63D35C8648BC1D91B7E48A60 /* RecipesView.swift */; };
 		87216B81C2F7B716287461E0 /* ShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B7C648006BF0FE54E49DAFA /* ShopView.swift */; };
 		AE926AD8F166851FF56DB51F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00B0F01AF9A51154C8A55B /* SignInView.swift */; };
+		1BB8E4A8EF14595F39E91CE8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D8703406E9B80F661A813DA6 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +55,7 @@
 		63D35C8648BC1D91B7E48A60 /* RecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipesView.swift; sourceTree = "<group>"; };
 		9B7C648006BF0FE54E49DAFA /* ShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopView.swift; sourceTree = "<group>"; };
 		FA00B0F01AF9A51154C8A55B /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		D8703406E9B80F661A813DA6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F5BF48AA40CAD7891EB709FC /* Mise.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mise.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -93,6 +95,7 @@
 				83FD2CD6B52C3A52D7DB2EB5 /* Kitchen.swift */,
 				D7C9297BDE8B787E912D3899 /* MiseApp.swift */,
 				F61B102C6DA2258BD7801E49 /* Theme.swift */,
+				D8703406E9B80F661A813DA6 /* Assets.xcassets */,
 			);
 			path = Mise; sourceTree = "<group>";
 		};
@@ -198,6 +201,7 @@
 				6E3A469DA2621D75DD8632A4 /* Newsreader-Italic.ttf in Resources */,
 				91212EE7928D225ADBD5D4B9 /* Newsreader-Regular.ttf in Resources */,
 				0D9DF9F8CC7CD04C5C2A3216 /* Newsreader-SemiBold.ttf in Resources */,
+				1BB8E4A8EF14595F39E91CE8 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -287,6 +291,7 @@
 		FA7C752E798F561D7D156D98 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -316,6 +321,7 @@
 		22F75101C717335ACF4089A0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
